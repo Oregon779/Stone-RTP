@@ -1,0 +1,387 @@
+# =====================================================================
+#                        Stone RTP - config.yml
+#                        A plugin by Stone Plugins
+# =====================================================================
+#
+# This file contains SETTINGS (switches, radii, timings, effects) as
+# well as the actual notification text itself - both live here (not
+# in messages.yml) so the whole "what does a countdown/result look
+# like" experience is configured in one single place.
+#
+# General command feedback (help, reload, errors, GUI item text, ...)
+# is translated per-language instead, in:
+#   plugins/Stone RTP/languages/<language>/messages.yml
+#
+# ---------------------------------------------------------------------
+# Placeholders usable in the notification messages below:
+#   {player}     - the player's name
+#   {world}      - the world name the player is being teleported to
+#   {x} {y} {z}  - the destination block coordinates
+#   {seconds}    - remaining warmup seconds (countdown messages only)
+#   {time}       - remaining cooldown, formatted as e.g. "1m 24s"
+#   {cost}       - the Vault cost for this random teleport
+#   {attempts}   - safe-location attempts used
+# ---------------------------------------------------------------------
+#
+# Missing options are added automatically on plugin updates. Existing
+# values you changed are never overwritten, even in nested sections.
+# =====================================================================
+
+# Language used for all command/status feedback. Must match a folder
+# under languages/ - "en" and "de" ship by default. New installs
+# always default to English until an admin changes this.
+language: en
+
+# Checks https://modrinth.com/project/stone-rtp for a newer plugin
+# version. Console feedback is always printed once right on startup. If
+# a newer version is found, everyone with stonertp.admin (or OP) is
+# reminded every time they join, until the plugin is updated.
+update-checker:
+  enabled: true
+  check-interval-minutes: 60
+
+# ---------- COOLDOWN ----------
+# Time a player has to wait between two random teleports.
+# Players with stonertp.bypass.cooldown ignore this entirely.
+cooldown:
+  enabled: true
+  seconds: 30
+  # Optional shorter cooldowns for donor/VIP ranks. The lowest matching
+  # value wins. A player needs the permission node on the left to get
+  # the seconds on the right - leave empty ({}) to disable entirely.
+  groups:
+    stonertp.cooldown.vip: 15
+    stonertp.cooldown.mvp: 5
+
+# ---------- WARMUP ----------
+# Countdown before the player is actually teleported. Gives the
+# particle effects below time to play and lets other players notice.
+# Players with stonertp.bypass.warmup teleport instantly.
+warmup:
+  enabled: true
+  seconds: 5
+  cancel-on-move: true
+  # How many blocks the player may drift before the warmup cancels.
+  move-cancel-threshold: 0.6
+  cancel-on-damage: true
+
+# ---------- COST ----------
+# Requires Vault + an economy plugin. Ignored entirely if Vault isn't
+# installed. Players with stonertp.bypass.cost teleport for free.
+cost:
+  enabled: false
+  amount: 100.0
+
+# ---------- NOTIFICATIONS ----------
+# Where AND with what text the warmup countdown is shown. Pick one
+# type - CHAT, ACTIONBAR, TITLE or BOSSBAR - the matching text below
+# is used, the others are ignored. Result/error messages (success,
+# cooldown, no-permission, ...) always stay in messages.yml.
+notification:
+  type: ACTIONBAR
+  messages:
+    chat: "&eTeleporting in &f{seconds}s&e..."
+    actionbar: "<gradient:#FFC24A:#FF7A00>➜ Teleporting in {seconds}s...</gradient>"
+    title: "<gradient:#9AA5B1:#FFC24A><bold>{seconds}</bold></gradient>"
+    subtitle: "&7Hold still..."
+    bossbar: "<gradient:#FFC24A:#FF7A00>Teleporting in {seconds}s...</gradient>"
+  title-timing:
+    fade-in-ticks: 5
+    stay-ticks: 40
+    fade-out-ticks: 10
+  bossbar:
+    color: YELLOW
+    style: NOTCHED_10
+
+# ---------- EFFECTS ----------
+# A stacking-layer 5-second countdown - each stage ADDS a new particle
+# layer on top of the ones already running instead of replacing them,
+# so the energy visibly builds up around the player second by second.
+#   Stage 1 (seconds 1-2): Layer A (ground rune ring, DUST + fine
+#     END_ROD) and Layer B (double helix) ignite immediately.
+#   Stage 2 (second 3): Layer C (hip + head rings, counter-rotating
+#     to the ground ring) and Layer D (rising ELECTRIC_SPARK sparks
+#     along the helix) unlock - A and B keep running.
+#   Stage 3 (second 4): color snaps to violet/gold, all rotation
+#     speeds double, and Layer E (an outer REVERSE_PORTAL vortex
+#     spiraling in from 3 blocks away) unlocks.
+#   Stage 4 (second 5): every active layer collapses smoothly toward
+#     the player's chest, and a thin white column shoots through them.
+#   Teleport moment: a flash + firework ring at the origin, a crisp
+#     white-out and fast-dissolving diamond aura at the destination.
+effects:
+  countdown:
+    enabled: true
+    # How often (in game ticks) the particles below redraw. Lower is
+    # smoother but spawns more particles - 2 ticks (10x/second) looks
+    # like one continuous effect instead of a pulse.
+    update-interval-ticks: 2
+
+    # Layer A: the ground rune ring, active from the first frame.
+    ground-ring:
+      points: 32
+      radius: 1.5
+      height-offset: 0.05
+      rotation-speed-degrees: 6
+      size: 1.0
+    # Layer B: the double helix, active from the first frame.
+    helix:
+      strands: 2
+      points: 18
+      loops: 2.0
+      radius: 0.6
+      height: 2.2
+      rotation-speed-degrees: 16
+      size: 0.8
+    # Layer C: unlocked at stage 2 (second 3), rotating opposite to
+    # the ground ring.
+    hip-ring:
+      points: 24
+      radius: 1.0
+      height: 0.9
+      rotation-speed-degrees: 10
+      size: 1.0
+    head-ring:
+      points: 24
+      radius: 0.8
+      height: 1.9
+      rotation-speed-degrees: 10
+      size: 1.0
+    # Layer D: unlocked at stage 2, sparks climbing alongside the helix.
+    sparks:
+      enabled: true
+      particle: ELECTRIC_SPARK
+      columns: 4
+      steps: 4
+      height: 2.2
+      rotation-speed-degrees: 20
+    # Layer E: unlocked at stage 3, spiraling in from 3 blocks away.
+    vortex:
+      enabled: true
+      particle: REVERSE_PORTAL
+      points: 30
+      start-radius: 3.0
+      height-offset: 1.0
+      rotation-speed-degrees: 28
+    # Stage 4: the thin column shooting through the player.
+    column:
+      enabled: true
+      particle: END_ROD
+      points: 14
+      below: 1.0
+      above: 2.5
+
+    # Stage 1 sound: clear, rising harp tone.
+    stage1:
+      sound: BLOCK_NOTE_BLOCK_HARP
+      sound-volume: 0.8
+      colors:
+        - "#00F5D4"
+        - "#0077B6"
+    # Stage 2 sound: a one-time crisp chime signals the new layers,
+    # plus a continuous, deepening hum.
+    stage2:
+      signal-sound: BLOCK_AMETHYST_BLOCK_CHIME
+      signal-volume: 0.9
+      hum-sound: BLOCK_BEACON_POWER_SELECT
+      hum-volume: 0.6
+    # Stage 3 sound + the violet/gold color used from here to the end.
+    stage3:
+      sound: ENTITY_ILLUSIONER_PREPARE_BLINDNESS
+      sound-volume: 0.7
+      colors:
+        - "#7B2CBF"
+        - "#FFD166"
+
+  # Teleport moment, part one: a flash + firework ring at the spot the
+  # player just left, plus a satisfying double-impact sound.
+  departure:
+    enabled: true
+    flash:
+      enabled: true
+      particle: FLASH
+      count: 1
+    ring:
+      enabled: true
+      particle: FIREWORK
+      points: 36
+      radius: 1.6
+    sound-enabled: true
+    totem-sound: ITEM_TOTEM_USE
+    totem-volume: 1.0
+    teleport-sound: ENTITY_ENDERMAN_TELEPORT
+    teleport-volume: 1.0
+
+  # Teleport moment, part two: a crisp white-out and a short ring of
+  # diamond dust that dissolves upward quickly.
+  arrival:
+    enabled: true
+    flash-particle: FLASH
+    flash-count: 1
+    burst-flash-particle: EXPLOSION_EMITTER
+    burst-flash-count: 1
+    colors:
+      - "#FFFFFF"
+      - "#57CC99"
+    # Sparkle burst right as the player lands.
+    burst:
+      enabled: true
+      particle: TOTEM_OF_UNDYING
+      count: 80
+      spread: 0.6
+      upward-velocity: 0.3
+    # A thick, unmistakable column of light through the player.
+    pillar:
+      enabled: true
+      rings: 10
+      points-per-ring: 8
+      radius: 0.5
+      height: 4.0
+      size: 1.3
+    # Two concentric rings growing outward in steps.
+    ring:
+      enabled: true
+      points: 36
+      max-radius: 3.0
+      ring-gap: 0.6
+      steps: 6
+      step-delay-ticks: 2
+      size: 1.0
+    # A one-shot double helix echoing the countdown's Layer B.
+    helix:
+      enabled: true
+      strands: 3
+      points: 36
+      loops: 3.0
+      radius: 0.9
+      height: 3.5
+      size: 1.1
+    # A gentle shower of light settling around the player afterward.
+    rain:
+      enabled: true
+      particle: END_ROD
+      waves: 14
+      particles-per-wave: 6
+      radius: 1.5
+      start-height: 3.5
+      wave-delay-ticks: 2
+    chime-sound: BLOCK_AMETHYST_BLOCK_CHIME
+    chime-volume: 0.9
+    settle-sound-enabled: true
+    settle-sound: BLOCK_AMETHYST_CLUSTER_BREAK
+    settle-volume: 0.5
+    settle-delay-ticks: 8
+
+# ---------- SAFE LOCATION SEARCH ----------
+# Runs asynchronously so the server never freezes while a spot is
+# found, even on very large radii. Uses the server's own surface
+# heightmap (ignoring leaves) to jump straight to the real outdoor
+# ground level, so players never land on top of a tree canopy or
+# inside a cave. The search starts the moment the warmup countdown
+# begins, so by the time it reaches zero the location is already
+# found and the player teleports instantly.
+safe-location:
+  max-attempts: 30
+  min-y: -58
+  max-y: 300
+  avoid-water: true
+  avoid-lava: true
+  respect-world-border: true
+  unsafe-materials:
+    - LAVA
+    - FIRE
+    - CACTUS
+    - MAGMA_BLOCK
+    - POWDER_SNOW
+    - WITHER_ROSE
+    - SWEET_BERRY_BUSH
+  # Biomes a random teleport should never land in. Leave empty ([]) to
+  # allow every biome. Example values: OCEAN, DEEP_OCEAN, THE_VOID.
+  blacklisted-biomes:
+    - OCEAN
+    - DEEP_OCEAN
+    - FROZEN_OCEAN
+    - THE_VOID
+
+# ---------- FIRST JOIN / AUTO RTP ----------
+# Automatically sends players somewhere random without them having to
+# type /rtp themselves.
+on-join:
+  enabled: false
+  only-first-join: true
+  world: world
+  delay-ticks: 40
+
+# ---------- WORLDS ----------
+# One entry per world random teleport is allowed in. The GUI below
+# maps its three buttons onto whichever world names you set here, so
+# these can be your own world names (e.g. a custom nether world).
+#   enabled     - turn random teleport into this world on/off. Can
+#                 also be toggled live with /stonertp toggle.
+#   center-x/z  - the coordinates the search circle is centered on
+#                 (usually your world spawn).
+#   radius-min  - players never land closer than this to the center.
+#   radius-max  - players never land further than this from the center.
+worlds:
+  world:
+    enabled: true
+    center-x: 0
+    center-z: 0
+    radius-min: 100
+    radius-max: 5000
+  world_nether:
+    enabled: true
+    center-x: 0
+    center-z: 0
+    radius-min: 50
+    radius-max: 1000
+  world_the_end:
+    enabled: true
+    center-x: 0
+    center-z: 0
+    radius-min: 100
+    radius-max: 2000
+
+# ---------- GUI ----------
+# Opened automatically with /rtp (no arguments). The chest GUI has 27
+# slots numbered 0-26, left to right, top to bottom (0-8 top row, 9-17
+# middle row, 18-26 bottom row) - that's what "slot" below refers to.
+gui:
+  enabled: true
+  size: 27
+  sound-open: BLOCK_ENDER_CHEST_OPEN
+  # Fallback click sound, only used if a slot below doesn't set its own.
+  sound-click: UI_BUTTON_CLICK
+  overworld:
+    world: world
+    slot: 11
+    # Used unless head-texture is set below.
+    material: GRASS_BLOCK
+    # Optional: paste a Base64 "value" from a head database site (e.g.
+    # minecraft-heads.com) here to use a custom player-head texture
+    # instead of the material above.
+    head-texture: ""
+    glow: false
+    click-sound: BLOCK_GRASS_STEP
+  nether:
+    world: world_nether
+    slot: 13
+    material: NETHERRACK
+    head-texture: ""
+    glow: false
+    click-sound: ITEM_FIRECHARGE_USE
+  end:
+    world: world_the_end
+    slot: 15
+    material: END_STONE
+    head-texture: ""
+    glow: false
+    click-sound: ENTITY_ENDERMAN_TELEPORT
+  filler:
+    enabled: true
+    # The main border color, filling every slot that isn't a world icon.
+    materials:
+      - BLACK_STAINED_GLASS_PANE
+    # An accent color overlaid on just the 4 corner slots for a bit of
+    # depth. Leave blank ("") to disable.
+    corner-material: GRAY_STAINED_GLASS_PANE

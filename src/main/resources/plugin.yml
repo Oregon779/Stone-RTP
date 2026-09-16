@@ -1,0 +1,50 @@
+name: StoneRTP
+version: '1.0.0'
+main: dev.stonertp.plugin.StoneRTP
+api-version: '26.2'
+author: Stone Plugins
+description: Stone RTP is a full-featured random teleport plugin with a world-picker GUI, safe-location search, countdown effects, cooldowns, warmups and optional Vault costs.
+folia-supported: false
+softdepend: [Vault]
+
+commands:
+  rtp:
+    description: Randomly teleport within a world, or open the world-picker GUI.
+    usage: /rtp [world|cancel]
+    aliases: [wild, randomtp]
+    permission: stonertp.use
+    permission-message: ""
+  back:
+    description: Return to your location before the last random teleport.
+    usage: /back
+    permission: stonertp.back
+    permission-message: ""
+  stonertp:
+    description: Main Stone RTP admin command for reloading the plugin, toggling worlds and viewing help.
+    usage: /stonertp <reload|toggle|help|checkupdate>
+    aliases: [srtp]
+    permission: stonertp.admin
+    permission-message: ""
+
+permissions:
+  stonertp.use:
+    description: Allows using /rtp to random teleport.
+    default: true
+  stonertp.gui:
+    description: Allows opening the Stone RTP world-picker GUI.
+    default: true
+  stonertp.admin:
+    description: Access to all Stone RTP admin actions (reload, toggle, checkupdate, teleporting other players, update notifications).
+    default: op
+  stonertp.bypass.cooldown:
+    description: Bypasses the cooldown between random teleports.
+    default: op
+  stonertp.bypass.warmup:
+    description: Bypasses the warmup countdown before teleporting.
+    default: op
+  stonertp.bypass.cost:
+    description: Bypasses the Vault cost charged per random teleport.
+    default: op
+  stonertp.back:
+    description: Allows using /back to return to your location before the last random teleport.
+    default: true

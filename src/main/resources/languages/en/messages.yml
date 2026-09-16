@@ -1,0 +1,103 @@
+# =====================================================================
+# Stone RTP messages (English)
+#
+# Every message players see is defined here - nothing is hardcoded in
+# the plugin's code. Feel free to change any text, icon or color.
+#
+# Supported color formats, usable at the same time in any message:
+#   &-codes        legacy color codes, e.g. &a, &b, &l
+#   Hex colors     e.g. &#FF00AA
+#   MiniMessage    e.g. <gradient:#ff0000:#0000ff>text</gradient>
+#
+# Icon legend used throughout this file (feel free to change these):
+#   ✔  success        ✖  error/blocked        ⚡ in progress
+#   ➔  prefix arrow    »  command list arrow
+#
+# Note: the warmup countdown text (chat/actionbar/title/bossbar) lives
+# in config.yml instead (notification.messages.*), since where and how
+# it's displayed is also configured there, right next to the setting.
+# =====================================================================
+
+# Shown in front of every chat message below (via {prefix} concatenation).
+prefix: "<gradient:#FFC24A:#FF7A00><bold>ꜱᴛᴏɴᴇ ʀᴛᴘ</bold></gradient> &8➔&r "
+
+# General feedback shared across multiple commands.
+general:
+  no-permission: "&c✖ You don't have permission to do that."
+  player-only: "&c✖ Only players can use this command."
+  player-not-found: "&c✖ Player &f'{player}' &cisn't online."
+  reload-success: "&a✔ Configuration and messages have been reloaded."
+  world-not-found: "&c✖ The world &f'{world}' &cdoesn't exist."
+  world-disabled: "&c✖ Random teleport is disabled in &f'{world}'&c."
+  unknown-subcommand: "&c✖ Unknown subcommand. Use &f/rtp menu&c, &f/rtp <world>&c or just &f/rtp&c."
+
+# Feedback for the main /rtp command and its subcommands.
+rtp:
+  searching: "&e⚡ Searching for a safe location..."
+  cancelled-move: "&c✖ Teleport cancelled - you moved."
+  cancelled-damage: "&c✖ Teleport cancelled - you took damage."
+  cancelled-generic: "&c✖ Teleport cancelled."
+  already-teleporting: "&c✖ You're already being teleported, hold still."
+  cooldown-active: "&c✖ You can random teleport again in &f{time}&c."
+  no-safe-location: "&c✖ No safe location could be found after {attempts} attempts, please try again."
+  success: "&a✔ Teleported to &f{world} &7(&f{x}&7, &f{y}&7, &f{z}&7)&a."
+  insufficient-funds: "&c✖ You need &f{cost} &cto random teleport."
+  cost-charged: "&7Charged &f{cost} &7for this random teleport."
+  other-triggered: "&a✔ Randomly teleporting &f{player}&a."
+  other-success: "&7You were randomly teleported by an admin."
+  world-toggle-on: "&a✔ Random teleport in &f{world} &ais now &l&aenabled&r&a."
+  world-toggle-off: "&e✔ Random teleport in &f{world} &eis now &l&edisabled&r&e."
+  world-not-configured: "&c✖ &f'{world}' &cis not a configured RTP world."
+
+# Feedback for /back.
+back:
+  no-location: "&c✖ You don't have a previous location to go back to."
+  success: "&a✔ Teleported back to your previous location."
+
+# The world-picker GUI, opened with /rtp (no arguments).
+gui:
+  title: "<gradient:#7F00FF:#E100FF><bold>ʀᴀɴᴅᴏᴍ ᴛᴇʟᴇᴘᴏʀᴛ</bold></gradient>"
+  free-label: "&#a8e063Free"
+  overworld:
+    name: "<gradient:#56ab2f:#a8e063><bold>ᴏᴠᴇʀᴡᴏʀʟᴅ</bold></gradient>"
+    lore:
+      - "&7Explore wild biomes and endless terrain."
+      - ""
+      - "&#56ab2f» Click to teleport"
+  nether:
+    name: "<gradient:#FF416C:#FF4B2B><bold>ɴᴇᴛʜᴇʀ</bold></gradient>"
+    lore:
+      - "&7Traverse dangerous nether wastes and fortress ruins."
+      - ""
+      - "&#FF416C» Click to teleport"
+  end:
+    name: "<gradient:#8E2DE2:#4A00E0><bold>ᴇɴᴅ</bold></gradient>"
+    lore:
+      - "&7Venture into the void and search for end cities."
+      - ""
+      - "&#8E2DE2» Click to teleport"
+  world-disabled:
+    name: "&8&lDISABLED"
+    lore:
+      - "&7Random teleport is disabled"
+      - "&7in this world."
+
+# /stonertp help output.
+help:
+  header: "<gradient:#9AA5B1:#FFC24A><bold>▬▬▬▬▬ ꜱᴛᴏɴᴇ ʀᴛᴘ ʜᴇʟᴘ ▬▬▬▬▬</bold></gradient>"
+  rtp: "&e/rtp [world] &8» &7Random teleport, optionally into a specific world - or open the world-picker GUI with no arguments"
+  cancel: "&e/rtp cancel &8» &7Cancel an active warmup countdown"
+  player: "&e/rtp player <player> [world] &8» &7Randomly teleport another player"
+  back: "&e/back &8» &7Return to your location before the last random teleport"
+  toggle: "&e/stonertp toggle <overworld|nether|end> [on|off] &8» &7Enable or disable random teleport into a dimension"
+  reload: "&e/stonertp reload &8» &7Reload the configuration and messages"
+  checkupdate: "&e/stonertp checkupdate &8» &7Check Modrinth for a new version right now"
+  help: "&e/stonertp help &8» &7Show this help menu"
+
+# Version-update notifications shown to admins/ops.
+update:
+  # Placeholders: {version} {current} {behind}
+  available: "<gradient:#FFC24A:#FF7A00><bold>ꜱᴛᴏɴᴇ ʀᴛᴘ</bold></gradient> &f⚡ A new version is available: &a{version} &7(you're on &c{current}&7, &e{behind} &7behind). Check Modrinth to update."
+  versions-behind: "{count} version(s)"
+  versions-behind-unknown: "an unknown number of versions"
+  check-triggered: "&e⚡ &7Checking Modrinth for updates now... &8watch the console for the result."

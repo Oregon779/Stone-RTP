@@ -1,0 +1,103 @@
+# =====================================================================
+# Stone RTP Nachrichten (Deutsch)
+#
+# Jede Nachricht, die Spieler sehen, steht hier - nichts ist im Code
+# hartcodiert. Text, Icons und Farben können frei angepasst werden.
+#
+# Unterstützte Farbformate, gleichzeitig nutzbar in jeder Nachricht:
+#   &-Codes        Legacy-Farbcodes, z.B. &a, &b, &l
+#   Hex-Farben     z.B. &#FF00AA
+#   MiniMessage    z.B. <gradient:#ff0000:#0000ff>text</gradient>
+#
+# Icon-Legende (kann frei geändert werden):
+#   ✔  Erfolg          ✖  Fehler/blockiert     ⚡ läuft gerade
+#   ➔  Prefix-Pfeil     »  Befehlslisten-Pfeil
+#
+# Hinweis: Der Countdown-Text (Chat/Actionbar/Title/Bossbar) steht in
+# der config.yml (notification.messages.*), da dort auch festgelegt
+# wird, WO und WIE er angezeigt wird - direkt neben der Einstellung.
+# =====================================================================
+
+# Wird jeder Chat-Nachricht unten vorangestellt (über {prefix}).
+prefix: "<gradient:#FFC24A:#FF7A00><bold>ꜱᴛᴏɴᴇ ʀᴛᴘ</bold></gradient> &8➔&r "
+
+# Allgemeines Feedback, das von mehreren Befehlen genutzt wird.
+general:
+  no-permission: "&c✖ Du hast keine Berechtigung dafür."
+  player-only: "&c✖ Nur Spieler können diesen Befehl nutzen."
+  player-not-found: "&c✖ Spieler &f'{player}' &cist nicht online."
+  reload-success: "&a✔ Konfiguration und Nachrichten wurden neu geladen."
+  world-not-found: "&c✖ Die Welt &f'{world}' &cexistiert nicht."
+  world-disabled: "&c✖ Zufallsteleport ist in &f'{world}' &cdeaktiviert."
+  unknown-subcommand: "&c✖ Unbekannter Unterbefehl. Nutze &f/rtp menu&c, &f/rtp <welt> &coder einfach &f/rtp&c."
+
+# Feedback für den /rtp-Befehl und seine Unterbefehle.
+rtp:
+  searching: "&e⚡ Suche einen sicheren Ort..."
+  cancelled-move: "&c✖ Teleport abgebrochen - du hast dich bewegt."
+  cancelled-damage: "&c✖ Teleport abgebrochen - du hast Schaden erlitten."
+  cancelled-generic: "&c✖ Teleport abgebrochen."
+  already-teleporting: "&c✖ Du wirst bereits teleportiert, halt still."
+  cooldown-active: "&c✖ Du kannst in &f{time} &cerneut zufallsteleportieren."
+  no-safe-location: "&c✖ Nach {attempts} Versuchen wurde kein sicherer Ort gefunden, versuche es erneut."
+  success: "&a✔ Teleportiert nach &f{world} &7(&f{x}&7, &f{y}&7, &f{z}&7)&a."
+  insufficient-funds: "&c✖ Du benötigst &f{cost} &czum Zufallsteleportieren."
+  cost-charged: "&7Es wurden &f{cost} &7für diesen Zufallsteleport abgezogen."
+  other-triggered: "&a✔ &f{player} &awird zufallsteleportiert."
+  other-success: "&7Du wurdest von einem Admin zufallsteleportiert."
+  world-toggle-on: "&a✔ Zufallsteleport in &f{world} &aist jetzt &l&aaktiviert&r&a."
+  world-toggle-off: "&e✔ Zufallsteleport in &f{world} &eist jetzt &l&edeaktiviert&r&e."
+  world-not-configured: "&c✖ &f'{world}' &cist keine konfigurierte RTP-Welt."
+
+# Feedback für /back.
+back:
+  no-location: "&c✖ Du hast keinen vorherigen Ort, zu dem du zurückkehren kannst."
+  success: "&a✔ Zurück zu deinem vorherigen Ort teleportiert."
+
+# Das Welt-Auswahlmenü, geöffnet mit /rtp (ohne Argumente).
+gui:
+  title: "<gradient:#7F00FF:#E100FF><bold>ʀᴀɴᴅᴏᴍ ᴛᴇʟᴇᴘᴏʀᴛ</bold></gradient>"
+  free-label: "&#a8e063Gratis"
+  overworld:
+    name: "<gradient:#56ab2f:#a8e063><bold>ᴏᴠᴇʀᴡᴏʀʟᴅ</bold></gradient>"
+    lore:
+      - "&7Erkunde wilde Biome und endloses Terrain."
+      - ""
+      - "&#56ab2f» Klicken zum Teleportieren"
+  nether:
+    name: "<gradient:#FF416C:#FF4B2B><bold>ɴᴇᴛʜᴇʀ</bold></gradient>"
+    lore:
+      - "&7Durchquere gefährliche Nether-Ödnis und Festungsruinen."
+      - ""
+      - "&#FF416C» Klicken zum Teleportieren"
+  end:
+    name: "<gradient:#8E2DE2:#4A00E0><bold>ᴇɴᴅ</bold></gradient>"
+    lore:
+      - "&7Wage dich in die Leere und suche End Cities."
+      - ""
+      - "&#8E2DE2» Klicken zum Teleportieren"
+  world-disabled:
+    name: "&8&lᴅᴇᴀᴋᴛɪᴠɪᴇʀᴛ"
+    lore:
+      - "&7Zufallsteleport ist in dieser"
+      - "&7Welt deaktiviert."
+
+# Ausgabe von /stonertp help.
+help:
+  header: "<gradient:#9AA5B1:#FFC24A><bold>▬▬▬▬▬ ꜱᴛᴏɴᴇ ʀᴛᴘ ʜɪʟꜰᴇ ▬▬▬▬▬</bold></gradient>"
+  rtp: "&e/rtp [welt] &8» &7Zufallsteleport, optional in eine bestimmte Welt - oder öffnet ohne Argument das Welt-Auswahlmenü"
+  cancel: "&e/rtp cancel &8» &7Bricht einen laufenden Countdown ab"
+  player: "&e/rtp player <spieler> [welt] &8» &7Teleportiert einen anderen Spieler zufällig"
+  back: "&e/back &8» &7Zurück zum Ort vor dem letzten Zufallsteleport"
+  toggle: "&e/stonertp toggle <overworld|nether|end> [on|off] &8» &7Zufallsteleport in eine Dimension aktivieren/deaktivieren"
+  reload: "&e/stonertp reload &8» &7Konfiguration und Nachrichten neu laden"
+  checkupdate: "&e/stonertp checkupdate &8» &7Jetzt sofort auf Modrinth nach einer neuen Version suchen"
+  help: "&e/stonertp help &8» &7Dieses Hilfemenü anzeigen"
+
+# Versions-Update-Hinweise für Admins/Ops.
+update:
+  # Platzhalter: {version} {current} {behind}
+  available: "<gradient:#FFC24A:#FF7A00><bold>ꜱᴛᴏɴᴇ ʀᴛᴘ</bold></gradient> &f⚡ Eine neue Version ist verfügbar: &a{version} &7(du nutzt &c{current}&7, &e{behind} &7dahinter). Auf Modrinth aktualisieren."
+  versions-behind: "{count} Version(en)"
+  versions-behind-unknown: "einer unbekannten Anzahl an Versionen"
+  check-triggered: "&e⚡ &7Suche jetzt auf Modrinth nach Updates... &8Ergebnis erscheint in der Konsole."
