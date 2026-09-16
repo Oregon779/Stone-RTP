@@ -33,12 +33,15 @@
 
     <dependencies>
         <!-- Paper API is provided by the server at runtime (includes Adventure 5 and Gson).
-             Paper moved to Minecraft-version-numbered releases; this range always resolves
-             to the latest 26.2 build. -->
+             Pinned to the latest stable 26.2 build (matches plugin.yml's api-version: '26.2')
+             instead of an open-ended range: resolving a [26.2.build,) range requires live
+             access to repo.papermc.io's metadata for every candidate version, which isn't
+             available in network-restricted build environments. Bump this by hand when
+             updating to a newer Paper build. -->
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
-            <version>[26.2.build,)</version>
+            <version>26.2.build.124-stable</version>
             <scope>provided</scope>
         </dependency>
         <!-- Soft dependency: only used if the server has Vault installed -->
