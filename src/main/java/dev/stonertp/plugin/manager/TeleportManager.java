@@ -29,10 +29,26 @@ public class TeleportManager {
     }
 
     public void startRTP(Player player, String worldName) {
+        startRTP(player, worldName, false);
+    }
+
+    // Zone standing time already acts as the warmup, and zones are free admin-placed pads, so
+    // cooldown, cost and warmup are skipped here.
+    public void startZoneRTP(Player player, String worldName) {
+        startRTP(player, worldName, true);
+    }
+
+    private void startRTP(Player player, String worldName, boolean fromZone) {
         MessageManager mm = plugin.getMessageManager();
 
         if (isTeleporting(player.getUniqueId())) {
             mm.sendChat(player, "rtp.already-teleporting", null);
+            return;
+        }
+
+        BlockedTimeManager blockedTimes = plugin.getBlockedTimeManager();
+        if (blockedTimes.isBlocked(player)) {
+            mm.sendChat(player, "rtp.blocked-time", Map.of("until", blockedTimes.formatBlockedUntil()));
             return;
         }
 
@@ -49,7 +65,7 @@ public class TeleportManager {
         }
 
         CooldownManager cooldown = plugin.getCooldownManager();
-        if (cooldown.isOnCooldown(player)) {
+        if (!fromZone && cooldown.isOnCooldown(player)) {
             String time = cooldown.formatRemaining(cooldown.getRemainingSeconds(player));
             mm.sendChat(player, "rtp.cooldown-active", Map.of("time", time));
             return;
@@ -57,7 +73,7 @@ public class TeleportManager {
 
         EconomyManager economy = plugin.getEconomyManager();
         double cost = plugin.getConfigManager().getCostAmount();
-        boolean chargeable = economy.canApplyCost() && !player.hasPermission("stonertp.bypass.cost");
+        boolean chargeable = !fromZone && economy.canApplyCost() && !player.hasPermission("stonertp.bypass.cost");
         if (chargeable) {
             if (!economy.canAfford(player, cost)) {
                 mm.sendChat(player, "rtp.insufficient-funds", Map.of("cost", economy.format(cost)));
@@ -71,7 +87,9 @@ public class TeleportManager {
         active.put(player.getUniqueId(), request);
         request.setLocationFuture(plugin.getSafeLocationFinder().find(world, settings));
 
-        boolean bypassWarmup = player.hasPermission("stonertp.bypass.warmup") || !plugin.getConfigManager().isWarmupEnabled();
+        boolean bypassWarmup = fromZone
+                || player.hasPermission("stonertp.bypass.warmup")
+                || !plugin.getConfigManager().isWarmupEnabled();
         if (bypassWarmup) {
             mm.sendChat(player, "rtp.searching", null);
             awaitAndTeleport(player, request);

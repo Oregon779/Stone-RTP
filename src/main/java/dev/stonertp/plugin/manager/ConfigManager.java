@@ -4,6 +4,7 @@ import dev.stonertp.plugin.StoneRTP;
 import dev.stonertp.plugin.config.ConfigUpdater;
 import dev.stonertp.plugin.model.MessageDisplayType;
 import dev.stonertp.plugin.model.RTPWorldSettings;
+import dev.stonertp.plugin.model.SearchMode;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.configuration.ConfigurationSection;
@@ -184,6 +185,10 @@ public class ConfigManager {
 
     public void setWorldEnabled(String worldName, boolean enabled) {
         config.set("worlds." + worldName + ".enabled", enabled);
+        save();
+    }
+
+    private void save() {
         try {
             config.save(configFile);
         } catch (IOException ex) {
@@ -191,10 +196,31 @@ public class ConfigManager {
         }
     }
 
+    public String getBlockedTimesTimezone() {
+        return getString("blocked-times.timezone", "");
+    }
+
+    public List<String> getBlockedTimePeriods() {
+        return getStringList("blocked-times.periods");
+    }
+
+    public void setBlockedTimePeriods(List<String> periods) {
+        config.set("blocked-times.periods", periods);
+        save();
+    }
+
+    public int getZoneDefaultIntervalSeconds() {
+        return Math.max(1, getInt("zones.default-interval-seconds", 10));
+    }
+
+    public String getZoneWandMaterial() {
+        return getString("zones.wand-material", "BLAZE_ROD");
+    }
+
     public RTPWorldSettings getWorldSettings(String worldName) {
         ConfigurationSection section = config.getConfigurationSection("worlds." + worldName);
         if (section == null) {
-            return new RTPWorldSettings(worldName, false, 0, 0, 0, 0);
+            return new RTPWorldSettings(worldName, false, 0, 0, 0, 0, SearchMode.AUTO);
         }
         return new RTPWorldSettings(
                 worldName,
@@ -202,7 +228,8 @@ public class ConfigManager {
                 section.getInt("center-x", 0),
                 section.getInt("center-z", 0),
                 section.getInt("radius-min", 100),
-                section.getInt("radius-max", 5000)
+                section.getInt("radius-max", 5000),
+                SearchMode.fromConfig(section.getString("search-mode", "AUTO"))
         );
     }
 

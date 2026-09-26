@@ -48,6 +48,7 @@ rtp:
   world-toggle-on: "&a✔ Zufallsteleport in &f{world} &aist jetzt &l&aaktiviert&r&a."
   world-toggle-off: "&e✔ Zufallsteleport in &f{world} &eist jetzt &l&edeaktiviert&r&e."
   world-not-configured: "&c✖ &f'{world}' &cist keine konfigurierte RTP-Welt."
+  blocked-time: "&c✖ Zufallsteleport ist gerade deaktiviert. Wieder verfügbar ab &f{until} Uhr&c."
 
 # Feedback für /back.
 back:
@@ -82,6 +83,48 @@ gui:
       - "&7Zufallsteleport ist in dieser"
       - "&7Welt deaktiviert."
 
+# /stonertp blocktime - tägliche Zeiträume ohne Zufallsteleport.
+blocktime:
+  usage: "&c✖ Nutzung: &f/stonertp blocktime add <von> <bis>&c, &f/stonertp blocktime remove <nummer>&c oder &f/stonertp blocktime list&c."
+  invalid: "&c✖ Ungültige Uhrzeit. Nutze HH:MM mit zwei verschiedenen Zeiten, z.B. &f/stonertp blocktime add 14:00 18:00&c."
+  invalid-index: "&c✖ Es gibt keine Sperrzeit mit dieser Nummer - siehe &f/stonertp blocktime list&c."
+  duplicate: "&c✖ &f{start} - {end} &cist bereits gesperrt."
+  added: "&a✔ Zufallsteleport ist jetzt täglich von &f{start} &abis &f{end} Uhr &agesperrt."
+  removed: "&a✔ Sperrzeit &f{start} - {end} &aentfernt."
+  list-header: "&7Gesperrte Zufallsteleport-Zeiten &8(aktuelle Uhrzeit: &f{now} &8{timezone})&7:"
+  list-entry: "  &8{index}. &f{start} - {end}{active}"
+  list-empty: "  &7Keine - Zufallsteleport ist rund um die Uhr verfügbar."
+  active-suffix: " &c(gerade aktiv)"
+
+# /stonertp zone - Bereiche, die jeden darin Stehenden zufallsteleportieren.
+zone:
+  usage: "&c✖ Nutzung: &f/stonertp zone wand&c, &f/stonertp zone create <name> [sekunden]&c, &f/stonertp zone delete <name>&c oder &f/stonertp zone list&c."
+  wand-name: "<gradient:#FFC24A:#FF7A00><bold>RTP-Zonen-Stab</bold></gradient>"
+  wand-lore:
+    - "&7Linksklick auf Block: &fEcke 1"
+    - "&7Rechtsklick auf Block: &fEcke 2"
+    - ""
+    - "&8Danach: /stonertp zone create <name> [sekunden]"
+  wand-given: "&a✔ Du hast den Zonen-Stab erhalten. &7Linksklick auf einen Block für Ecke 1, Rechtsklick für Ecke 2."
+  pos-set: "&a✔ Ecke {pos} gesetzt auf &f{x}, {y}, {z} &7({world})&a."
+  selection-size: "&7Auswahl: &f{x}×{y}×{z} &7Blöcke - jetzt &f/stonertp zone create <name> [sekunden] &7ausführen."
+  no-selection: "&c✖ Markiere zuerst beide Ecken mit dem Zonen-Stab (&f/stonertp zone wand&c)."
+  different-worlds: "&c✖ Beide Ecken müssen in derselben Welt liegen."
+  invalid-name: "&c✖ Zonennamen dürfen nur Buchstaben, Zahlen, - und _ enthalten (max. 32 Zeichen)."
+  name-taken: "&c✖ Eine Zone namens &f{name} &cexistiert bereits."
+  invalid-interval: "&c✖ Das Intervall muss eine ganze Zahl an Sekunden sein (1 oder mehr)."
+  created: "&a✔ RTP-Zone &f{name} &aerstellt &7({x}×{y}×{z} Blöcke, teleportiert nach {seconds}s)&a."
+  world-not-enabled: "&e⚠ Zufallsteleport ist für &f{world} &ein der config.yml nicht aktiviert - die Zone bleibt inaktiv, bis er es ist."
+  deleted: "&a✔ RTP-Zone &f{name} &agelöscht."
+  not-found: "&c✖ Es gibt keine Zone namens &f{name}&c."
+  list-header: "&7RTP-Zonen &8({count})&7:"
+  list-entry: "  &8- &f{name} &7in &f{world} &8({min} → {max}, {seconds}s)"
+  list-empty: "&7Noch keine RTP-Zonen - starte mit &f/stonertp zone wand&7."
+  # Actionbar-Texte, während man in einer Zone steht.
+  countdown: "<gradient:#FFC24A:#FF7A00>➜ Zufallsteleport in {seconds}s...</gradient>"
+  paused: "&c✖ Zufallsteleport pausiert bis &f{until} Uhr"
+  left: "&7Du hast die RTP-Zone verlassen."
+
 # Ausgabe von /stonertp help.
 help:
   header: "<gradient:#9AA5B1:#FFC24A><bold>▬▬▬▬▬ ꜱᴛᴏɴᴇ ʀᴛᴘ ʜɪʟꜰᴇ ▬▬▬▬▬</bold></gradient>"
@@ -90,6 +133,8 @@ help:
   player: "&e/rtp player <spieler> [welt] &8» &7Teleportiert einen anderen Spieler zufällig"
   back: "&e/back &8» &7Zurück zum Ort vor dem letzten Zufallsteleport"
   toggle: "&e/stonertp toggle <overworld|nether|end> [on|off] &8» &7Zufallsteleport in eine Dimension aktivieren/deaktivieren"
+  blocktime: "&e/stonertp blocktime <add|remove|list> &8» &7Tägliche Zeiten ohne Zufallsteleport, z.B. add 14:00 18:00"
+  zone: "&e/stonertp zone <wand|create|delete|list> &8» &7Bereiche, die jeden darin Stehenden zufallsteleportieren"
   reload: "&e/stonertp reload &8» &7Konfiguration und Nachrichten neu laden"
   checkupdate: "&e/stonertp checkupdate &8» &7Jetzt sofort auf Modrinth nach einer neuen Version suchen"
   help: "&e/stonertp help &8» &7Dieses Hilfemenü anzeigen"

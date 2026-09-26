@@ -6,6 +6,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 
 import java.io.File;
 import java.io.IOException;
@@ -192,5 +193,9 @@ public class MessageManager {
 
     public void sendRaw(CommandSender target, String path, Map<String, String> placeholders) {
         target.sendMessage(format(getRaw(path), placeholders));
+    }
+
+    public void sendActionBar(Player target, String path, Map<String, String> placeholders) {
+        target.sendActionBar(format(getRaw(path), placeholders));
     }
 }

@@ -11,8 +11,9 @@ is the admin command (reload, per-world toggle, help, manual update check).
 
 - **Java 25**, Maven, `packaging=jar`. Build with `mvn package` (aggregate
   goal is `clean package`, i.e. plain `mvn` also works).
-- Dependencies: `io.papermc.paper:paper-api` (provided, resolved as a
-  version *range* `[26.2.build,)` from `repo.papermc.io`) and
+- Dependencies: `io.papermc.paper:paper-api` (provided, pinned to
+  `26.2.build.124-stable` from `repo.papermc.io` — deliberately not a
+  version range, which can't be resolved offline) and
   `com.github.MilkBowl:VaultAPI:1.7` (provided/soft-depend, resolved from
   `jitpack.io`). Neither is on Maven Central.
 - **Sandboxed/offline environments**: both `repo.papermc.io` and
@@ -51,16 +52,28 @@ constructed with.
     configured annulus, world-border/biome/material checks), retried up
     to `safe-location.max-attempts` times. Async chunk load via
     `getChunkAtAsync`, but all block/biome reads happen back on the main
-    thread inside `runTask`.
+    thread inside `runTask`. Per-world `search-mode` (`SearchMode`):
+    SURFACE uses the heightmap top; CAVE scans upward for a floor below
+    the roof (never on top of it); AUTO picks CAVE for `hasCeiling()` /
+    NETHER worlds so datapack/modded nethers work too.
+  - `BlockedTimeManager` — daily `TimeWindow`s (from
+    `blocked-times.periods`, may wrap midnight) during which
+    `TeleportManager` refuses to start any RTP.
+  - `ZoneManager` — cuboid `RTPZone`s persisted in `zones.yml` (data, not
+    settings — kept out of config.yml), the selection wand (PDC-tagged
+    item) and a once-per-second task that RTPs players who stayed inside
+    a zone for its interval via `TeleportManager#startZoneRTP` (no
+    cost/cooldown/warmup).
   - `EffectManager` — the particle/sound "show" during warmup and on
     arrival/departure; entirely config-driven (colors, radii, particle
     types all come from `config.yml`).
   - `CooldownManager`, `EconomyManager` (Vault), `BackLocationManager`,
     `NotificationManager` (actionbar/title/bossbar/chat countdown
     display), `GUIManager`, `UpdateChecker` (polls Modrinth).
-- `model/` — small value types: `RTPWorldSettings` (record),
-  `TeleportRequest` (mutable, holds the in-flight `BukkitTask`s and
-  location `CompletableFuture`), `MessageDisplayType` (enum).
+- `model/` — small value types: `RTPWorldSettings`, `RTPZone`,
+  `TimeWindow` (records), `TeleportRequest` (mutable, holds the in-flight
+  `BukkitTask`s and location `CompletableFuture`), `MessageDisplayType`,
+  `SearchMode` (enums).
 - `config/ConfigUpdater` — merges new keys from the bundled default
   config/messages into the on-disk file without touching existing values
   (comments are not preserved — a `YamlConfiguration` limitation).

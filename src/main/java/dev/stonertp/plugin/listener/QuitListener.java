@@ -19,5 +19,6 @@ public class QuitListener implements Listener {
         plugin.getTeleportManager().cancelOnQuit(player.getUniqueId());
         plugin.getEffectManager().clearRotation(player);
         plugin.getGuiManager().untrack(player.getUniqueId());
+        plugin.getZoneManager().forget(player.getUniqueId());
     }
 }

@@ -72,6 +72,22 @@ cost:
   enabled: false
   amount: 100.0
 
+# ---------- BLOCKED TIMES ----------
+# Daily time windows during which random teleport is unavailable - this
+# covers /rtp, the GUI, auto-RTP on join and RTP zones alike. Format
+# "HH:MM-HH:MM"; windows crossing midnight work too, e.g. "22:00-02:00".
+# Manage them in-game with /stonertp blocktime add|remove|list instead
+# of editing this list by hand. Players with stonertp.bypass.blocktime
+# are never blocked.
+blocked-times:
+  # Time zone the windows above are read in, e.g. "Europe/Berlin". Leave
+  # empty ("") to use the server's own clock - /stonertp blocktime list
+  # shows which time the plugin currently sees.
+  timezone: ""
+  # Example: ["14:00-18:00"] blocks random teleport every day from 14:00
+  # until 18:00.
+  periods: []
+
 # ---------- NOTIFICATIONS ----------
 # Where AND with what text the warmup countdown is shown. Pick one
 # type - CHAT, ACTIONBAR, TITLE or BOSSBAR - the matching text below
@@ -312,6 +328,22 @@ on-join:
   world: world
   delay-ticks: 40
 
+# ---------- RTP ZONES ----------
+# Areas that randomly teleport everyone standing inside them after a
+# number of seconds, within the world the zone is in (that world needs
+# an entry under "worlds" below). Zones are created in-game:
+#   1. /stonertp zone wand             - get the selection wand
+#   2. left-click / right-click blocks - mark the two opposite corners
+#   3. /stonertp zone create <name> [seconds]
+# Zones are stored in zones.yml. Zone teleports are free, ignore the
+# cooldown and skip the warmup (the time spent in the zone is the
+# countdown), but still respect blocked times. Players with
+# stonertp.bypass.zone are never teleported by zones.
+zones:
+  # Used when /stonertp zone create is run without a seconds value.
+  default-interval-seconds: 10
+  wand-material: BLAZE_ROD
+
 # ---------- WORLDS ----------
 # One entry per world random teleport is allowed in. The GUI below
 # maps its three buttons onto whichever world names you set here, so
@@ -322,6 +354,15 @@ on-join:
 #                 (usually your world spawn).
 #   radius-min  - players never land closer than this to the center.
 #   radius-max  - players never land further than this from the center.
+#   search-mode - how the landing height is found:
+#                   AUTO    - (default) CAVE for worlds with a roof, SURFACE
+#                             for everything else. Detects custom/modded
+#                             nethers (e.g. Incendium) automatically.
+#                   SURFACE - land on the highest block of the column
+#                             (overworld/end style).
+#                   CAVE    - land on a cave floor below the roof, never on
+#                             top of it. Force this for custom dimensions
+#                             that have a roof but aren't detected by AUTO.
 worlds:
   world:
     enabled: true
@@ -329,18 +370,21 @@ worlds:
     center-z: 0
     radius-min: 100
     radius-max: 5000
+    search-mode: AUTO
   world_nether:
     enabled: true
     center-x: 0
     center-z: 0
     radius-min: 50
     radius-max: 1000
+    search-mode: AUTO
   world_the_end:
     enabled: true
     center-x: 0
     center-z: 0
     radius-min: 100
     radius-max: 2000
+    search-mode: AUTO
 
 # ---------- GUI ----------
 # Opened automatically with /rtp (no arguments). The chest GUI has 27

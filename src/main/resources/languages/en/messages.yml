@@ -48,6 +48,7 @@ rtp:
   world-toggle-on: "&a✔ Random teleport in &f{world} &ais now &l&aenabled&r&a."
   world-toggle-off: "&e✔ Random teleport in &f{world} &eis now &l&edisabled&r&e."
   world-not-configured: "&c✖ &f'{world}' &cis not a configured RTP world."
+  blocked-time: "&c✖ Random teleport is disabled right now. It's available again at &f{until}&c."
 
 # Feedback for /back.
 back:
@@ -82,6 +83,48 @@ gui:
       - "&7Random teleport is disabled"
       - "&7in this world."
 
+# /stonertp blocktime - daily windows without random teleport.
+blocktime:
+  usage: "&c✖ Usage: &f/stonertp blocktime add <from> <to>&c, &f/stonertp blocktime remove <number>&c or &f/stonertp blocktime list&c."
+  invalid: "&c✖ Invalid time. Use HH:MM with two different times, e.g. &f/stonertp blocktime add 14:00 18:00&c."
+  invalid-index: "&c✖ There is no blocked time with that number - see &f/stonertp blocktime list&c."
+  duplicate: "&c✖ &f{start} - {end} &cis already blocked."
+  added: "&a✔ Random teleport is now blocked every day from &f{start} &ato &f{end}&a."
+  removed: "&a✔ Removed the blocked time &f{start} - {end}&a."
+  list-header: "&7Blocked random teleport times &8(current time: &f{now} &8{timezone})&7:"
+  list-entry: "  &8{index}. &f{start} - {end}{active}"
+  list-empty: "  &7None - random teleport is available around the clock."
+  active-suffix: " &c(active now)"
+
+# /stonertp zone - areas that random teleport everyone standing inside.
+zone:
+  usage: "&c✖ Usage: &f/stonertp zone wand&c, &f/stonertp zone create <name> [seconds]&c, &f/stonertp zone delete <name>&c or &f/stonertp zone list&c."
+  wand-name: "<gradient:#FFC24A:#FF7A00><bold>RTP Zone Wand</bold></gradient>"
+  wand-lore:
+    - "&7Left-click a block: &fcorner 1"
+    - "&7Right-click a block: &fcorner 2"
+    - ""
+    - "&8Then: /stonertp zone create <name> [seconds]"
+  wand-given: "&a✔ You got the zone wand. &7Left-click a block for corner 1, right-click for corner 2."
+  pos-set: "&a✔ Corner {pos} set to &f{x}, {y}, {z} &7({world})&a."
+  selection-size: "&7Selection: &f{x}×{y}×{z} &7blocks - now run &f/stonertp zone create <name> [seconds]&7."
+  no-selection: "&c✖ Mark both corners with the zone wand first (&f/stonertp zone wand&c)."
+  different-worlds: "&c✖ Both corners have to be in the same world."
+  invalid-name: "&c✖ Zone names may only use letters, numbers, - and _ (max. 32 characters)."
+  name-taken: "&c✖ A zone called &f{name} &calready exists."
+  invalid-interval: "&c✖ The interval has to be a whole number of seconds (1 or more)."
+  created: "&a✔ RTP zone &f{name} &acreated &7({x}×{y}×{z} blocks, teleports after {seconds}s)&a."
+  world-not-enabled: "&e⚠ Random teleport isn't enabled for &f{world} &ein config.yml - this zone stays inactive until it is."
+  deleted: "&a✔ RTP zone &f{name} &adeleted."
+  not-found: "&c✖ There's no zone called &f{name}&c."
+  list-header: "&7RTP zones &8({count})&7:"
+  list-entry: "  &8- &f{name} &7in &f{world} &8({min} → {max}, {seconds}s)"
+  list-empty: "&7No RTP zones yet - start with &f/stonertp zone wand&7."
+  # Action bar texts shown while standing inside a zone.
+  countdown: "<gradient:#FFC24A:#FF7A00>➜ Random teleport in {seconds}s...</gradient>"
+  paused: "&c✖ Random teleport is paused until &f{until}"
+  left: "&7You left the RTP zone."
+
 # /stonertp help output.
 help:
   header: "<gradient:#9AA5B1:#FFC24A><bold>▬▬▬▬▬ ꜱᴛᴏɴᴇ ʀᴛᴘ ʜᴇʟᴘ ▬▬▬▬▬</bold></gradient>"
@@ -90,6 +133,8 @@ help:
   player: "&e/rtp player <player> [world] &8» &7Randomly teleport another player"
   back: "&e/back &8» &7Return to your location before the last random teleport"
   toggle: "&e/stonertp toggle <overworld|nether|end> [on|off] &8» &7Enable or disable random teleport into a dimension"
+  blocktime: "&e/stonertp blocktime <add|remove|list> &8» &7Daily times without random teleport, e.g. add 14:00 18:00"
+  zone: "&e/stonertp zone <wand|create|delete|list> &8» &7Areas that random teleport everyone standing inside"
   reload: "&e/stonertp reload &8» &7Reload the configuration and messages"
   checkupdate: "&e/stonertp checkupdate &8» &7Check Modrinth for a new version right now"
   help: "&e/stonertp help &8» &7Show this help menu"

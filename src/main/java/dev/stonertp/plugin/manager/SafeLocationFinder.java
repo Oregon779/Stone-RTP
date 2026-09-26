@@ -18,6 +18,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class SafeLocationFinder {
+    private static final int NO_FLOOR = Integer.MIN_VALUE;
+
     private final StoneRTP plugin;
 
     public SafeLocationFinder(StoneRTP plugin) {
@@ -26,12 +28,12 @@ public class SafeLocationFinder {
 
     public CompletableFuture<Location> find(World world, RTPWorldSettings settings) {
         CompletableFuture<Location> result = new CompletableFuture<>();
-        SearchContext context = buildContext(world);
+        SearchContext context = buildContext(world, settings);
         attempt(world, settings, context, 1, result);
         return result;
     }
 
-    private SearchContext buildContext(World world) {
+    private SearchContext buildContext(World world, RTPWorldSettings settings) {
         ConfigManager cfg = plugin.getConfigManager();
         int minY = Math.max(world.getMinHeight(), cfg.getSafeLocationMinY());
         int maxY = Math.min(world.getMaxHeight() - 1, cfg.getSafeLocationMaxY());
@@ -39,12 +41,23 @@ public class SafeLocationFinder {
                 cfg.getSafeLocationMaxAttempts(),
                 minY,
                 maxY,
+                isCaveWorld(world, settings),
                 cfg.isRespectWorldBorder(),
                 cfg.isAvoidWater(),
                 cfg.isAvoidLava(),
                 unsafeMaterials(),
                 blacklistedBiomes()
         );
+    }
+
+    // Dimensions with a roof (vanilla Nether, but also datapack/modpack nethers such as Incendium) report
+    // the roof as their highest block, so the surface heightmap would put players on top of it.
+    private boolean isCaveWorld(World world, RTPWorldSettings settings) {
+        return switch (settings.searchMode()) {
+            case CAVE -> true;
+            case SURFACE -> false;
+            case AUTO -> world.hasCeiling() || world.getEnvironment() == World.Environment.NETHER;
+        };
     }
 
     private void attempt(World world, RTPWorldSettings settings, SearchContext context, int attemptNumber, CompletableFuture<Location> result) {
@@ -67,7 +80,7 @@ public class SafeLocationFinder {
         int chunkZ = xz[1] >> 4;
 
         world.getChunkAtAsync(chunkX, chunkZ).thenAccept(chunk -> plugin.getServer().getScheduler().runTask(plugin, () -> {
-            Location safe = resolveSurface(world, xz[0], xz[1], context);
+            Location safe = resolveLocation(world, xz[0], xz[1], context);
             if (safe != null) {
                 result.complete(safe);
             } else {
@@ -85,37 +98,56 @@ public class SafeLocationFinder {
         return new int[]{x, z};
     }
 
-    private Location resolveSurface(World world, int x, int z, SearchContext context) {
-        int groundY = world.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
-        if (groundY < context.minY() || groundY > context.maxY()) {
+    private Location resolveLocation(World world, int x, int z, SearchContext context) {
+        int groundY = context.caveMode() ? findCaveFloorY(world, x, z, context) : findSurfaceY(world, x, z, context);
+        if (groundY == NO_FLOOR) {
             return null;
         }
-
         if (!context.blacklistedBiomes().isEmpty() && context.blacklistedBiomes().contains(world.getBiome(x, groundY, z))) {
             return null;
         }
+        return new Location(world, x + 0.5, groundY + 1, z + 0.5);
+    }
 
+    private int findSurfaceY(World world, int x, int z, SearchContext context) {
+        int groundY = world.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
+        if (groundY < context.minY() || groundY > context.maxY()) {
+            return NO_FLOOR;
+        }
+        return isSafeSpot(world, x, groundY, z, context) ? groundY : NO_FLOOR;
+    }
+
+    // Scans upward for the first standable floor that still has the roof above the player's head.
+    private int findCaveFloorY(World world, int x, int z, SearchContext context) {
+        int roofY = world.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES);
+        int topGroundY = Math.min(context.maxY(), roofY - 3);
+        for (int y = context.minY(); y <= topGroundY; y++) {
+            if (isSafeSpot(world, x, y, z, context)) {
+                return y;
+            }
+        }
+        return NO_FLOOR;
+    }
+
+    private boolean isSafeSpot(World world, int x, int groundY, int z, SearchContext context) {
         Block ground = world.getBlockAt(x, groundY, z);
+        Material groundType = ground.getType();
+        if (!groundType.isSolid() || context.unsafeMaterials().contains(groundType)) {
+            return false;
+        }
+        if (context.caveMode() && groundType == Material.BEDROCK) {
+            return false;
+        }
+
         Block feet = world.getBlockAt(x, groundY + 1, z);
         Block head = world.getBlockAt(x, groundY + 2, z);
-
-        if (!ground.getType().isSolid()) {
-            return null;
-        }
-        if (context.unsafeMaterials().contains(ground.getType())) {
-            return null;
+        if (!isPassable(feet.getType()) || !isPassable(head.getType())) {
+            return false;
         }
         if (context.avoidWater() && (ground.isLiquid() || feet.isLiquid())) {
-            return null;
+            return false;
         }
-        if (context.avoidLava() && (ground.getType() == Material.LAVA || feet.getType() == Material.LAVA)) {
-            return null;
-        }
-        if (!isPassable(feet.getType()) || !isPassable(head.getType())) {
-            return null;
-        }
-
-        return new Location(world, x + 0.5, groundY + 1, z + 0.5);
+        return !context.avoidLava() || (groundType != Material.LAVA && feet.getType() != Material.LAVA);
     }
 
     private boolean isPassable(Material material) {
@@ -152,7 +184,8 @@ public class SafeLocationFinder {
         return materials;
     }
 
-    private record SearchContext(int maxAttempts, int minY, int maxY, boolean respectBorder, boolean avoidWater,
-                                  boolean avoidLava, Set<Material> unsafeMaterials, Set<Biome> blacklistedBiomes) {
+    private record SearchContext(int maxAttempts, int minY, int maxY, boolean caveMode, boolean respectBorder,
+                                 boolean avoidWater, boolean avoidLava, Set<Material> unsafeMaterials,
+                                 Set<Biome> blacklistedBiomes) {
     }
 }

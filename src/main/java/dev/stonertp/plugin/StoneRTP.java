@@ -8,7 +8,9 @@ import dev.stonertp.plugin.listener.PlayerMoveListener;
 import dev.stonertp.plugin.command.BackCommand;
 import dev.stonertp.plugin.listener.JoinListener;
 import dev.stonertp.plugin.listener.QuitListener;
+import dev.stonertp.plugin.listener.ZoneWandListener;
 import dev.stonertp.plugin.manager.BackLocationManager;
+import dev.stonertp.plugin.manager.BlockedTimeManager;
 import dev.stonertp.plugin.manager.ConfigManager;
 import dev.stonertp.plugin.manager.CooldownManager;
 import dev.stonertp.plugin.manager.EconomyManager;
@@ -19,6 +21,7 @@ import dev.stonertp.plugin.manager.NotificationManager;
 import dev.stonertp.plugin.manager.SafeLocationFinder;
 import dev.stonertp.plugin.manager.TeleportManager;
 import dev.stonertp.plugin.manager.UpdateChecker;
+import dev.stonertp.plugin.manager.ZoneManager;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.TabCompleter;
@@ -39,6 +42,8 @@ public final class StoneRTP extends JavaPlugin {
     private GUIManager guiManager;
     private BackLocationManager backLocationManager;
     private UpdateChecker updateChecker;
+    private BlockedTimeManager blockedTimeManager;
+    private ZoneManager zoneManager;
     private org.bukkit.scheduler.BukkitTask cooldownPruneTask;
 
     @Override
@@ -63,6 +68,10 @@ public final class StoneRTP extends JavaPlugin {
         guiManager = new GUIManager(this);
         backLocationManager = new BackLocationManager();
         updateChecker = new UpdateChecker(this);
+        blockedTimeManager = new BlockedTimeManager(this);
+        blockedTimeManager.load();
+        zoneManager = new ZoneManager(this);
+        zoneManager.load();
 
         getLogger().info("Registering commands...");
         registerCommands();
@@ -74,6 +83,7 @@ public final class StoneRTP extends JavaPlugin {
         updateChecker.start();
 
         cooldownPruneTask = Bukkit.getScheduler().runTaskTimer(this, cooldownManager::pruneExpired, 20L * 60 * 10, 20L * 60 * 10);
+        zoneManager.start();
 
         getLogger().info("Stone RTP has been enabled - /rtp is ready to use.");
     }
@@ -86,6 +96,9 @@ public final class StoneRTP extends JavaPlugin {
         if (cooldownPruneTask != null) {
             cooldownPruneTask.cancel();
         }
+        if (zoneManager != null) {
+            zoneManager.stop();
+        }
         getLogger().info("Stone RTP has been disabled.");
     }
 
@@ -93,6 +106,8 @@ public final class StoneRTP extends JavaPlugin {
         configManager.reload();
         messageManager.load();
         economyManager.setup();
+        blockedTimeManager.load();
+        zoneManager.load();
         updateChecker.start();
     }
 
@@ -116,6 +131,7 @@ public final class StoneRTP extends JavaPlugin {
         pm.registerEvents((Listener) new GUIListener(this), (Plugin) this);
         pm.registerEvents((Listener) new JoinListener(this), (Plugin) this);
         pm.registerEvents((Listener) new QuitListener(this), (Plugin) this);
+        pm.registerEvents(new ZoneWandListener(this), this);
         pm.registerEvents((Listener) updateChecker, (Plugin) this);
     }
 
@@ -161,5 +177,13 @@ public final class StoneRTP extends JavaPlugin {
 
     public UpdateChecker getUpdateChecker() {
         return updateChecker;
+    }
+
+    public BlockedTimeManager getBlockedTimeManager() {
+        return blockedTimeManager;
+    }
+
+    public ZoneManager getZoneManager() {
+        return zoneManager;
     }
 }

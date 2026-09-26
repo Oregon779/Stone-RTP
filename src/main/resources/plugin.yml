@@ -20,8 +20,8 @@ commands:
     permission: stonertp.back
     permission-message: ""
   stonertp:
-    description: Main Stone RTP admin command for reloading the plugin, toggling worlds and viewing help.
-    usage: /stonertp <reload|toggle|help|checkupdate>
+    description: Main Stone RTP admin command for reloading, toggling worlds, blocked times, RTP zones and help.
+    usage: /stonertp <reload|toggle|blocktime|zone|help|checkupdate>
     aliases: [srtp]
     permission: stonertp.admin
     permission-message: ""
@@ -34,7 +34,7 @@ permissions:
     description: Allows opening the Stone RTP world-picker GUI.
     default: true
   stonertp.admin:
-    description: Access to all Stone RTP admin actions (reload, toggle, checkupdate, teleporting other players, update notifications).
+    description: Access to all Stone RTP admin actions (reload, toggle, blocked times, RTP zones incl. the zone wand, checkupdate, teleporting other players, update notifications).
     default: op
   stonertp.bypass.cooldown:
     description: Bypasses the cooldown between random teleports.
@@ -45,6 +45,12 @@ permissions:
   stonertp.bypass.cost:
     description: Bypasses the Vault cost charged per random teleport.
     default: op
+  stonertp.bypass.blocktime:
+    description: Allows random teleporting during the blocked times set with /stonertp blocktime.
+    default: op
+  stonertp.bypass.zone:
+    description: Standing inside an RTP zone never teleports this player (e.g. for staff at spawn). Not given to ops by default.
+    default: false
   stonertp.back:
     description: Allows using /back to return to your location before the last random teleport.
     default: true
