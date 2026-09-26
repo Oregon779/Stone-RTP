@@ -5,6 +5,7 @@ import dev.stonertp.plugin.config.ConfigUpdater;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
@@ -16,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class MessageManager {
     private static final Map<Character, String> LEGACY_TAGS = new HashMap<>();
@@ -87,15 +89,27 @@ public class MessageManager {
         }
 
         try {
-            ConfigUpdater.UpdateResult result = ConfigUpdater.update(plugin, resourcePath, file);
+            ConfigUpdater.UpdateResult result = ConfigUpdater.update(plugin, resourcePath, file, Set.of());
             if (result.addedKeys() > 0) {
                 plugin.getLogger().info("Added " + result.addedKeys() + " new message key(s) to languages/" + lang + "/messages.yml");
             }
-        } catch (IOException ex) {
-            plugin.getLogger().warning("Failed to update messages for '" + lang + "': " + ex.getMessage());
+            languageCache.put(lang, result.config());
+        } catch (IOException | InvalidConfigurationException ex) {
+            plugin.getLogger().severe("languages/" + lang + "/messages.yml could not be read, using the built-in texts until it is fixed."
+                    + " Your file was NOT changed. Problem: " + ex.getMessage());
+            try {
+                YamlConfiguration bundled = ConfigUpdater.loadBundled(plugin, resourcePath);
+                if (bundled != null) {
+                    languageCache.put(lang, bundled);
+                }
+            } catch (IOException ignored) {
+            }
         }
+    }
 
-        languageCache.put(lang, YamlConfiguration.loadConfiguration(file));
+    // Player-typed text (world names, player names) must not be able to inject click/hover/format tags.
+    public String escape(String userInput) {
+        return miniMessage.escapeTags(userInput);
     }
 
     public String getRaw(String path) {

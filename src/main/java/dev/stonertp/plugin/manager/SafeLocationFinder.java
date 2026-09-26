@@ -2,6 +2,8 @@ package dev.stonertp.plugin.manager;
 
 import dev.stonertp.plugin.StoneRTP;
 import dev.stonertp.plugin.model.RTPWorldSettings;
+import io.papermc.paper.registry.RegistryAccess;
+import io.papermc.paper.registry.RegistryKey;
 import org.bukkit.HeightMap;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -13,23 +15,40 @@ import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
 
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BooleanSupplier;
 
 public class SafeLocationFinder {
     private static final int NO_FLOOR = Integer.MIN_VALUE;
 
     private final StoneRTP plugin;
+    private Set<Material> unsafeMaterials = Set.of();
+    private Set<Biome> blacklistedBiomes = Set.of();
 
     public SafeLocationFinder(StoneRTP plugin) {
         this.plugin = plugin;
+        this.unsafeMaterials = parseUnsafeMaterials();
+        this.blacklistedBiomes = parseBlacklistedBiomes();
+    }
+
+    // Parsed once per (re)load instead of on every search, which also stops a typo from logging a warning per /rtp.
+    public void reload() {
+        unsafeMaterials = parseUnsafeMaterials();
+        blacklistedBiomes = parseBlacklistedBiomes();
     }
 
     public CompletableFuture<Location> find(World world, RTPWorldSettings settings) {
+        return find(world, settings, () -> true);
+    }
+
+    // stillWanted lets a cancelled/abandoned teleport stop the search instead of loading chunks for nobody.
+    public CompletableFuture<Location> find(World world, RTPWorldSettings settings, BooleanSupplier stillWanted) {
         CompletableFuture<Location> result = new CompletableFuture<>();
         SearchContext context = buildContext(world, settings);
-        attempt(world, settings, context, 1, result);
+        attempt(world, settings, context, stillWanted, 1, result);
         return result;
     }
 
@@ -45,8 +64,8 @@ public class SafeLocationFinder {
                 cfg.isRespectWorldBorder(),
                 cfg.isAvoidWater(),
                 cfg.isAvoidLava(),
-                unsafeMaterials(),
-                blacklistedBiomes()
+                unsafeMaterials,
+                blacklistedBiomes
         );
     }
 
@@ -60,8 +79,9 @@ public class SafeLocationFinder {
         };
     }
 
-    private void attempt(World world, RTPWorldSettings settings, SearchContext context, int attemptNumber, CompletableFuture<Location> result) {
-        if (attemptNumber > context.maxAttempts()) {
+    private void attempt(World world, RTPWorldSettings settings, SearchContext context, BooleanSupplier stillWanted,
+                         int attemptNumber, CompletableFuture<Location> result) {
+        if (attemptNumber > context.maxAttempts() || !stillWanted.getAsBoolean()) {
             result.complete(null);
             return;
         }
@@ -71,7 +91,7 @@ public class SafeLocationFinder {
         if (context.respectBorder()) {
             WorldBorder border = world.getWorldBorder();
             if (!border.isInside(new Location(world, xz[0], 64, xz[1]))) {
-                attempt(world, settings, context, attemptNumber + 1, result);
+                attempt(world, settings, context, stillWanted, attemptNumber + 1, result);
                 return;
             }
         }
@@ -79,14 +99,28 @@ public class SafeLocationFinder {
         int chunkX = xz[0] >> 4;
         int chunkZ = xz[1] >> 4;
 
-        world.getChunkAtAsync(chunkX, chunkZ).thenAccept(chunk -> plugin.getServer().getScheduler().runTask(plugin, () -> {
-            Location safe = resolveLocation(world, xz[0], xz[1], context);
-            if (safe != null) {
-                result.complete(safe);
-            } else {
-                attempt(world, settings, context, attemptNumber + 1, result);
+        // whenComplete + try/catch: any failure must still complete the future, or the player's request hangs forever.
+        world.getChunkAtAsync(chunkX, chunkZ).whenComplete((chunk, error) -> {
+            if (!plugin.isEnabled()) {
+                result.complete(null);
+                return;
             }
-        }));
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                try {
+                    Location safe = error == null && stillWanted.getAsBoolean()
+                            ? resolveLocation(world, xz[0], xz[1], context)
+                            : null;
+                    if (safe != null) {
+                        result.complete(safe);
+                    } else {
+                        attempt(world, settings, context, stillWanted, attemptNumber + 1, result);
+                    }
+                } catch (RuntimeException ex) {
+                    plugin.getLogger().warning("Safe-location search in " + world.getName() + " failed: " + ex);
+                    result.complete(null);
+                }
+            });
+        });
     }
 
     private int[] randomPointInAnnulus(RTPWorldSettings settings) {
@@ -158,11 +192,12 @@ public class SafeLocationFinder {
                 || material.name().endsWith("FERN");
     }
 
-    private Set<Biome> blacklistedBiomes() {
+    private Set<Biome> parseBlacklistedBiomes() {
         Set<Biome> biomes = new HashSet<>();
+        Registry<Biome> registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.BIOME);
         for (String name : plugin.getConfigManager().getBlacklistedBiomes()) {
-            NamespacedKey key = NamespacedKey.minecraft(name.trim().toLowerCase());
-            Biome biome = Registry.BIOME.get(key);
+            NamespacedKey key = NamespacedKey.fromString(name.trim().toLowerCase(Locale.ROOT));
+            Biome biome = key != null ? registry.get(key) : null;
             if (biome != null) {
                 biomes.add(biome);
             } else {
@@ -172,7 +207,7 @@ public class SafeLocationFinder {
         return biomes;
     }
 
-    private Set<Material> unsafeMaterials() {
+    private Set<Material> parseUnsafeMaterials() {
         Set<Material> materials = new HashSet<>();
         for (String name : plugin.getConfigManager().getUnsafeMaterials()) {
             try {

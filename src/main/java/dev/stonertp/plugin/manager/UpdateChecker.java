@@ -21,6 +21,7 @@ public class UpdateChecker implements Listener {
     private static final String MODRINTH_PROJECT_SLUG = "stone-rtp";
 
     private final StoneRTP plugin;
+    private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private BukkitTask task;
     private volatile String latestKnownVersion = null;
     private volatile int versionsBehind = -1;
@@ -51,9 +52,13 @@ public class UpdateChecker implements Listener {
         }
     }
 
+    public void shutdown() {
+        stop();
+        client.shutdownNow();
+    }
+
     private void check() {
         try {
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("https://api.modrinth.com/v2/project/" + MODRINTH_PROJECT_SLUG + "/version"))
                     .timeout(Duration.ofSeconds(10))
@@ -80,7 +85,9 @@ public class UpdateChecker implements Listener {
                 latestKnownVersion = newest;
                 versionsBehind = countVersionsBehind(versions, current);
                 logToConsole(newest, current);
-                Bukkit.getScheduler().runTask(plugin, () -> notifyOnlineEligiblePlayers(newest, current));
+                if (plugin.isEnabled()) {
+                    Bukkit.getScheduler().runTask(plugin, () -> notifyOnlineEligiblePlayers(newest, current));
+                }
             } else {
                 latestKnownVersion = null;
                 versionsBehind = -1;

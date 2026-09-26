@@ -4,6 +4,7 @@ import dev.stonertp.plugin.StoneRTP;
 import dev.stonertp.plugin.model.RTPWorldSettings;
 import dev.stonertp.plugin.model.RTPZone;
 import dev.stonertp.plugin.util.ItemBuilder;
+import dev.stonertp.plugin.util.YamlFiles;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -11,6 +12,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -39,6 +41,7 @@ public class ZoneManager {
     private final Map<UUID, Stay> stays = new HashMap<>();
     private Material wandMaterial = Material.BLAZE_ROD;
     private BukkitTask task;
+    private boolean storageBroken;
 
     private record Stay(String zoneName, int elapsedSeconds) {
     }
@@ -52,12 +55,22 @@ public class ZoneManager {
         wandMaterial = parseWandMaterial(plugin.getConfigManager().getZoneWandMaterial());
         zones.clear();
         stays.clear();
+        storageBroken = false;
 
         File file = file();
         if (!file.exists()) {
             return;
         }
-        ConfigurationSection section = YamlConfiguration.loadConfiguration(file).getConfigurationSection("zones");
+        YamlConfiguration yaml = new YamlConfiguration();
+        try {
+            yaml.load(file);
+        } catch (IOException | InvalidConfigurationException ex) {
+            storageBroken = true;
+            plugin.getLogger().severe("zones.yml could not be read, so no RTP zones are active and zone changes are blocked"
+                    + " until it is fixed (the file was NOT changed). Fix it and run /stonertp reload. Problem: " + ex.getMessage());
+            return;
+        }
+        ConfigurationSection section = yaml.getConfigurationSection("zones");
         if (section == null) {
             return;
         }
@@ -92,7 +105,15 @@ public class ZoneManager {
         return material;
     }
 
+    public boolean isStorageBroken() {
+        return storageBroken;
+    }
+
     private void save() {
+        if (storageBroken) {
+            plugin.getLogger().warning("Not saving zones.yml because it could not be read - saving now would delete the zones in it.");
+            return;
+        }
         YamlConfiguration yaml = new YamlConfiguration();
         for (RTPZone zone : zones.values()) {
             String path = "zones." + zone.name();
@@ -106,7 +127,7 @@ public class ZoneManager {
             yaml.set(path + ".interval-seconds", zone.intervalSeconds());
         }
         try {
-            yaml.save(file());
+            YamlFiles.saveAtomically(yaml, file());
         } catch (IOException ex) {
             plugin.getLogger().warning("Could not save zones.yml: " + ex.getMessage());
         }

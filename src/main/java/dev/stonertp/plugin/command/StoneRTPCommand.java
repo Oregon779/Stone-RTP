@@ -77,13 +77,18 @@ public class StoneRTPCommand implements CommandExecutor, TabCompleter {
         String requested = args[1].toLowerCase();
         String worldName = TOGGLE_KEYS.contains(requested) ? cfg.getGuiWorldFor(requested) : args[1];
         if (worldName == null || !cfg.isWorldConfigured(worldName)) {
-            mm.sendChat(sender, "rtp.world-not-configured", Map.of("world", args[1]));
+            mm.sendChat(sender, "rtp.world-not-configured", Map.of("world", mm.escape(args[1])));
             return;
         }
 
         boolean newState;
         if (args.length >= 3) {
-            newState = args[2].equalsIgnoreCase("on");
+            String state = args[2].toLowerCase();
+            if (!TOGGLE_STATES.contains(state)) {
+                mm.sendChat(sender, "general.toggle-usage", null);
+                return;
+            }
+            newState = state.equals("on");
         } else {
             newState = !cfg.getWorldSettings(worldName).enabled();
         }
@@ -175,18 +180,25 @@ public class StoneRTPCommand implements CommandExecutor, TabCompleter {
                     mm.sendChat(sender, "zone.usage", null);
                     return;
                 }
-                if (!zones.delete(args[2])) {
-                    mm.sendChat(sender, "zone.not-found", Map.of("name", args[2]));
+                if (zones.isStorageBroken()) {
+                    mm.sendChat(sender, "zone.storage-broken", null);
                     return;
                 }
-                mm.sendChat(sender, "zone.deleted", Map.of("name", args[2]));
+                RTPZone existing = zones.getZone(args[2]);
+                if (existing == null) {
+                    mm.sendChat(sender, "zone.not-found", Map.of("name", mm.escape(args[2])));
+                    return;
+                }
+                zones.delete(existing.name());
+                mm.sendChat(sender, "zone.deleted", Map.of("name", existing.name()));
             }
             case "wand" -> {
                 if (!(sender instanceof Player player)) {
                     mm.sendChat(sender, "general.player-only", null);
                     return;
                 }
-                player.getInventory().addItem(zones.createWand());
+                player.getInventory().addItem(zones.createWand()).values()
+                        .forEach(leftover -> player.getWorld().dropItem(player.getLocation(), leftover));
                 mm.sendChat(player, "zone.wand-given", null);
             }
             case "create" -> {
@@ -211,6 +223,10 @@ public class StoneRTPCommand implements CommandExecutor, TabCompleter {
         String name = args[2];
         if (!zones.isValidName(name)) {
             mm.sendChat(player, "zone.invalid-name", null);
+            return;
+        }
+        if (zones.isStorageBroken()) {
+            mm.sendChat(player, "zone.storage-broken", null);
             return;
         }
         if (zones.getZone(name) != null) {

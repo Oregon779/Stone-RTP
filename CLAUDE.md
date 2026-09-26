@@ -24,7 +24,15 @@ is the admin command (reload, per-world toggle, help, manual update check).
   which aren't on Central either) into the local repo with
   `mvn install:install-file`, or by running the build somewhere with
   network access to those hosts.
-- No test suite exists (`src/test` is absent).
+- Tests: JUnit + MockBukkit (`mockbukkit-v26.2`, from Maven Central) under
+  `src/test`; `mvn package` runs them. `PluginTestBase` boots a mock server
+  and loads the plugin (so `StoneRTP` must stay non-`final`). MockBukkit
+  leaves some Paper APIs unimplemented, so tests use `addWorld()` /
+  `addPlayer()` from the base class (`AsyncChunkWorldMock`,
+  `AsyncTeleportPlayerMock` fill in `getChunkAtAsync`/`teleportAsync`) and
+  `FakeEconomy` (proxy-based Vault economy). A MockBukkit
+  `UnimplementedOperationException` shows up as a *skipped* test, not a
+  failure — treat new skips as missing test support, not a pass.
 
 ## Architecture
 
@@ -47,7 +55,13 @@ constructed with.
     legacy `&`/hex codes to MiniMessage, renders `Component`s.
   - `TeleportManager` — orchestrates one RTP attempt end to end: cooldown
     → cost → safe-location search → warmup countdown → chunk preload →
-    teleport. Tracks in-flight attempts in `Map<UUID, TeleportRequest>`.
+    teleport. Tracks in-flight attempts in `Map<UUID, TeleportRequest>`;
+    a request stays there until the teleport itself starts, and every
+    async step re-checks `active.get(uuid) == request` before acting.
+    Three entry points: `startRTP` (player), `startZoneRTP` and
+    `startForcedRTP` (`/rtp player`) — the latter two skip cost, cooldown
+    and warmup. Money is only ever refunded if the Vault withdrawal
+    actually succeeded; quit, cancel and plugin disable all refund.
   - `SafeLocationFinder` — async candidate search (random point in the
     configured annulus, world-border/biome/material checks), retried up
     to `safe-location.max-attempts` times. Async chunk load via
@@ -75,8 +89,14 @@ constructed with.
   `BukkitTask`s and location `CompletableFuture`), `MessageDisplayType`,
   `SearchMode` (enums).
 - `config/ConfigUpdater` — merges new keys from the bundled default
-  config/messages into the on-disk file without touching existing values
-  (comments are not preserved — a `YamlConfiguration` limitation).
+  config/messages into the on-disk file without touching existing values.
+  If the file doesn't parse it throws instead of rewriting it; callers
+  then run on the bundled defaults and never save over the broken file
+  (`ConfigManager` read-only mode, `ZoneManager#isStorageBroken`).
+  User-owned sections (`worlds`, `cooldown.groups`) are passed as
+  free-form and are never re-populated once the admin removes entries.
+- `util/YamlFiles#saveAtomically` — every YAML write goes to a temp file
+  and is renamed over the target, so a crash can't leave an empty file.
 - `util/ItemBuilder` — fluent `ItemStack` builder for the GUI (heads,
   glow, PDC tags used to identify which world a GUI item teleports to).
 
@@ -103,4 +123,15 @@ constructed with.
 - Async work (safe-location search, chunk preloading, the Modrinth update
   check) always hops back to the main thread via
   `Bukkit.getScheduler().runTask(...)` before touching Bukkit API state
-  (inventories, teleporting, sending messages).
+  (inventories, teleporting, sending messages). Use `whenComplete`, not
+  `thenAccept`, on futures that gate a player's request, so a failure
+  can't leave the request stuck forever.
+- Player-typed text that ends up in a message placeholder goes through
+  `MessageManager#escape` (no MiniMessage tag injection).
+- Hot paths (move/click/damage listeners, per-tick effect frames) must
+  exit early and avoid per-call parsing: config-derived sounds,
+  particles, colours and cooldown groups are cached per (re)load, and
+  particles go only to viewers resolved once per frame
+  (`EffectManager#viewersNear`, same 32-block radius as vanilla).
+- Never close/open inventories directly inside `InventoryClickEvent`;
+  schedule it for the next tick.

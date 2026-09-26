@@ -2,6 +2,7 @@ package dev.stonertp.plugin.manager;
 
 import dev.stonertp.plugin.StoneRTP;
 import net.milkbowl.vault.economy.Economy;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
@@ -50,7 +51,7 @@ public class EconomyManager {
         return economy.withdrawPlayer(player, amount).transactionSuccess();
     }
 
-    public void refund(Player player, double amount) {
+    public void refund(OfflinePlayer player, double amount) {
         if (!isPresent() || amount <= 0) {
             return;
         }

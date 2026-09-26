@@ -9,6 +9,8 @@ import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -21,13 +23,21 @@ public class EffectManager {
     private static final double STAGE2_START = 0.4;
     private static final double STAGE3_START = 0.6;
     private static final double STAGE4_START = 0.8;
+    // Same radius World#spawnParticle uses for non-forced particles, so exactly the same players see the effects.
+    private static final double VIEW_DISTANCE = 32.0;
 
     private final StoneRTP plugin;
     private final Map<String, Integer> rotation = new HashMap<>();
     private final Set<Particle> warnedParticles = new HashSet<>();
+    private final Map<String, List<Color>> colorCache = new HashMap<>();
 
     public EffectManager(StoneRTP plugin) {
         this.plugin = plugin;
+    }
+
+    public void reload() {
+        colorCache.clear();
+        warnedParticles.clear();
     }
 
     public boolean isCountdownEnabled() {
@@ -44,6 +54,17 @@ public class EffectManager {
         }
         double progress = 1.0 - ((double) secondsLeft / (double) totalSeconds);
         return Math.max(0.0, Math.min(1.0, progress));
+    }
+
+    // World#spawnParticle scans every player in the world per particle; resolving viewers once per frame is far cheaper.
+    private Collection<Player> viewersNear(Location center) {
+        World world = center.getWorld();
+        if (world == null) {
+            return List.of();
+        }
+        double maxDistanceSquared = VIEW_DISTANCE * VIEW_DISTANCE;
+        return world.getNearbyPlayers(center, VIEW_DISTANCE,
+                viewer -> viewer.getLocation().distanceSquared(center) <= maxDistanceSquared);
     }
 
     public void playCountdownSound(Player player, int secondsLeft, int totalSeconds) {
@@ -82,26 +103,30 @@ public class EffectManager {
         if (!isCountdownEnabled()) {
             return;
         }
+        Collection<Player> viewers = viewersNear(player.getLocation());
+        if (viewers.isEmpty()) {
+            return;
+        }
         double progress = progressFor(secondsLeft, totalSeconds);
-        List<String> colors = progress < STAGE3_START ? colorsFor("stage1") : colorsFor("stage3");
+        List<Color> colors = progress < STAGE3_START ? colors("effects.countdown.stage1.colors") : colors("effects.countdown.stage3.colors");
         double speedMultiplier = progress >= STAGE3_START ? 2.0 : 1.0;
         double collapse = collapseFactor(progress);
 
-        drawGroundRing(player, colors, speedMultiplier, collapse);
-        drawHelix(player, colors, speedMultiplier, collapse);
+        drawGroundRing(viewers, player, colors, speedMultiplier, collapse);
+        drawHelix(viewers, player, colors, speedMultiplier, collapse);
 
         if (progress >= STAGE2_START) {
-            drawHipHeadRings(player, colors, speedMultiplier, collapse);
-            drawRisingSparks(player, collapse);
+            drawHipHeadRings(viewers, player, colors, speedMultiplier, collapse);
+            drawRisingSparks(viewers, player, collapse);
         }
 
         if (progress >= STAGE3_START) {
             double vortexProgress = (progress - STAGE3_START) / (1.0 - STAGE3_START);
-            drawImplosionVortex(player, vortexProgress);
+            drawImplosionVortex(viewers, player, vortexProgress);
         }
 
         if (progress >= STAGE4_START) {
-            drawWhiteColumn(player);
+            drawWhiteColumn(viewers, player);
         }
     }
 
@@ -113,11 +138,17 @@ public class EffectManager {
         return Math.max(0.05, 1.0 - local * 0.95);
     }
 
-    private List<String> colorsFor(String key) {
-        return plugin.getConfigManager().getStringList("effects.countdown." + key + ".colors");
+    private List<Color> colors(String path) {
+        return colorCache.computeIfAbsent(path, key -> {
+            List<Color> parsed = new ArrayList<>();
+            for (String hex : plugin.getConfigManager().getStringList(key)) {
+                parsed.add(parseColor(hex, Color.WHITE));
+            }
+            return List.copyOf(parsed);
+        });
     }
 
-    private void drawGroundRing(Player player, List<String> colors, double speedMultiplier, double collapse) {
+    private void drawGroundRing(Collection<Player> viewers, Player player, List<Color> colors, double speedMultiplier, double collapse) {
         ConfigManager cfg = plugin.getConfigManager();
         String path = "effects.countdown.ground-ring";
         int points = Math.max(6, cfg.getInt(path + ".points", 32));
@@ -127,10 +158,10 @@ public class EffectManager {
         double size = cfg.getDouble(path + ".size", 1.0);
 
         int angle = advanceRotation(player, "ground", rotationStep);
-        drawRing(player, colors, points, radius, heightOffset, angle, Particle.END_ROD, size);
+        drawRing(viewers, player, colors, points, radius, heightOffset, angle, Particle.END_ROD, size);
     }
 
-    private void drawHelix(Player player, List<String> colors, double speedMultiplier, double collapse) {
+    private void drawHelix(Collection<Player> viewers, Player player, List<Color> colors, double speedMultiplier, double collapse) {
         ConfigManager cfg = plugin.getConfigManager();
         String path = "effects.countdown.helix";
         int strands = Math.max(1, cfg.getInt(path + ".strands", 2));
@@ -157,12 +188,12 @@ public class EffectManager {
                 point.setY(base.getY() + y);
                 point.setZ(base.getZ() + z);
                 Color color = cyclingColor(colors, i, Color.WHITE);
-                spawnDust(player, point, color, size);
+                spawnDust(viewers, point, color, size);
             }
         }
     }
 
-    private void drawHipHeadRings(Player player, List<String> colors, double speedMultiplier, double collapse) {
+    private void drawHipHeadRings(Collection<Player> viewers, Player player, List<Color> colors, double speedMultiplier, double collapse) {
         ConfigManager cfg = plugin.getConfigManager();
 
         String hp = "effects.countdown.hip-ring";
@@ -172,7 +203,7 @@ public class EffectManager {
         int hipRotationStep = -(int) Math.round(cfg.getInt(hp + ".rotation-speed-degrees", 10) * speedMultiplier);
         double hipSize = cfg.getDouble(hp + ".size", 1.0);
         int hipAngle = advanceRotation(player, "hip", hipRotationStep);
-        drawRing(player, colors, hipPoints, hipRadius, hipHeight, hipAngle, null, hipSize);
+        drawRing(viewers, player, colors, hipPoints, hipRadius, hipHeight, hipAngle, null, hipSize);
 
         String hd = "effects.countdown.head-ring";
         int headPoints = Math.max(6, cfg.getInt(hd + ".points", 24));
@@ -181,10 +212,10 @@ public class EffectManager {
         int headRotationStep = -(int) Math.round(cfg.getInt(hd + ".rotation-speed-degrees", 10) * speedMultiplier);
         double headSize = cfg.getDouble(hd + ".size", 1.0);
         int headAngle = advanceRotation(player, "head", headRotationStep);
-        drawRing(player, colors, headPoints, headRadius, headHeight, headAngle, null, headSize);
+        drawRing(viewers, player, colors, headPoints, headRadius, headHeight, headAngle, null, headSize);
     }
 
-    private void drawRisingSparks(Player player, double collapse) {
+    private void drawRisingSparks(Collection<Player> viewers, Player player, double collapse) {
         ConfigManager cfg = plugin.getConfigManager();
         String path = "effects.countdown.sparks";
         if (!cfg.getBoolean(path + ".enabled", true)) {
@@ -209,12 +240,12 @@ public class EffectManager {
                 point.setX(base.getX() + x);
                 point.setY(base.getY() + t * height);
                 point.setZ(base.getZ() + z);
-                safeSpawn(player.getWorld(), particle, point, 1, 0, 0, 0, 0);
+                safeSpawn(viewers, particle, point, 1, 0, 0, 0, 0);
             }
         }
     }
 
-    private void drawImplosionVortex(Player player, double vortexProgress) {
+    private void drawImplosionVortex(Collection<Player> viewers, Player player, double vortexProgress) {
         ConfigManager cfg = plugin.getConfigManager();
         String path = "effects.countdown.vortex";
         if (!cfg.getBoolean(path + ".enabled", true)) {
@@ -238,11 +269,11 @@ public class EffectManager {
             double z = Math.sin(angle) * radius;
             point.setX(base.getX() + x);
             point.setZ(base.getZ() + z);
-            safeSpawn(player.getWorld(), particle, point, 1, 0, 0, 0, 0);
+            safeSpawn(viewers, particle, point, 1, 0, 0, 0, 0);
         }
     }
 
-    private void drawWhiteColumn(Player player) {
+    private void drawWhiteColumn(Collection<Player> viewers, Player player) {
         ConfigManager cfg = plugin.getConfigManager();
         String path = "effects.countdown.column";
         if (!cfg.getBoolean(path + ".enabled", true)) {
@@ -259,12 +290,12 @@ public class EffectManager {
         for (int i = 0; i < points; i++) {
             double t = (double) i / points;
             point.setY(base.getY() + (-belowFeet + t * totalHeight));
-            safeSpawn(player.getWorld(), particle, point, 1, 0.02, 0, 0.02, 0);
+            safeSpawn(viewers, particle, point, 1, 0.02, 0, 0.02, 0);
         }
     }
 
-    private void drawRing(Player player, List<String> colors, int points, double radius, double heightOffset,
-                           int rotationAngle, Particle secondaryParticle, double size) {
+    private void drawRing(Collection<Player> viewers, Player player, List<Color> colors, int points, double radius, double heightOffset,
+                          int rotationAngle, Particle secondaryParticle, double size) {
         Location base = player.getLocation().add(0, heightOffset, 0);
         Location point = base.clone();
         for (int i = 0; i < points; i++) {
@@ -274,10 +305,10 @@ public class EffectManager {
             point.setX(base.getX() + x);
             point.setZ(base.getZ() + z);
             if (secondaryParticle != null && i % 4 == 0) {
-                safeSpawn(player.getWorld(), secondaryParticle, point, 1, 0, 0, 0, 0);
+                safeSpawn(viewers, secondaryParticle, point, 1, 0, 0, 0, 0);
             } else {
                 Color color = cyclingColor(colors, i, Color.WHITE);
-                spawnDust(player, point, color, size);
+                spawnDust(viewers, point, color, size);
             }
         }
     }
@@ -291,11 +322,12 @@ public class EffectManager {
         if (world == null) {
             return;
         }
+        Collection<Player> viewers = viewersNear(origin);
 
         if (cfg.getBoolean("effects.departure.flash.enabled", true)) {
             Particle flash = cfg.getParticle("effects.departure.flash.particle", Particle.FLASH);
             int count = cfg.getInt("effects.departure.flash.count", 1);
-            safeSpawn(world, flash, origin.clone().add(0, 1, 0), count, 0.1, 0.1, 0.1, 0);
+            safeSpawn(viewers, flash, origin.clone().add(0, 1, 0), count, 0.1, 0.1, 0.1, 0);
         }
 
         if (cfg.getBoolean("effects.departure.ring.enabled", true)) {
@@ -307,7 +339,7 @@ public class EffectManager {
                 double x = Math.cos(angle) * radius;
                 double z = Math.sin(angle) * radius;
                 Location point = origin.clone().add(x, 0.1, z);
-                safeSpawn(world, ring, point, 1, 0, 0, 0, 0.05);
+                safeSpawn(viewers, ring, point, 1, 0, 0, 0, 0.05);
             }
         }
 
@@ -334,27 +366,28 @@ public class EffectManager {
             return;
         }
 
-        List<String> colors = cfg.getStringList("effects.arrival.colors");
+        List<Color> colors = colors("effects.arrival.colors");
+        Collection<Player> viewers = viewersNear(player.getLocation());
 
-        playArrivalFlashAndBurst(player, colors);
+        playArrivalFlashAndBurst(viewers, player);
         playArrivalSounds(player);
-        playLightPillar(player, colors);
+        playLightPillar(viewers, player, colors);
         scheduleArrivalRingExpansion(player, colors);
-        playArrivalHelixColumn(player, colors);
+        playArrivalHelixColumn(viewers, player, colors);
         scheduleArrivalRain(player, colors);
     }
 
-    private void playArrivalFlashAndBurst(Player player, List<String> colors) {
+    private void playArrivalFlashAndBurst(Collection<Player> viewers, Player player) {
         ConfigManager cfg = plugin.getConfigManager();
         Location loc = player.getLocation().add(0, 1, 0);
 
         Particle flash = cfg.getParticle("effects.arrival.flash-particle", Particle.FLASH);
         int flashCount = cfg.getInt("effects.arrival.flash-count", 1);
-        safeSpawn(player.getWorld(), flash, loc, flashCount, 0.1, 0.1, 0.1, 0);
+        safeSpawn(viewers, flash, loc, flashCount, 0.1, 0.1, 0.1, 0);
 
         Particle burstFlash = cfg.getParticle("effects.arrival.burst-flash-particle", Particle.EXPLOSION_EMITTER);
         int burstFlashCount = cfg.getInt("effects.arrival.burst-flash-count", 1);
-        safeSpawn(player.getWorld(), burstFlash, loc, burstFlashCount, 0.1, 0.1, 0.1, 0);
+        safeSpawn(viewers, burstFlash, loc, burstFlashCount, 0.1, 0.1, 0.1, 0);
 
         String path = "effects.arrival.burst";
         if (!cfg.getBoolean(path + ".enabled", true)) {
@@ -364,10 +397,10 @@ public class EffectManager {
         int count = cfg.getInt(path + ".count", 80);
         double spread = cfg.getDouble(path + ".spread", 0.6);
         double upwardVelocity = cfg.getDouble(path + ".upward-velocity", 0.3);
-        safeSpawn(player.getWorld(), sparkle, loc, count, spread, spread, spread, upwardVelocity);
+        safeSpawn(viewers, sparkle, loc, count, spread, spread, spread, upwardVelocity);
     }
 
-    private void playLightPillar(Player player, List<String> colors) {
+    private void playLightPillar(Collection<Player> viewers, Player player, List<Color> colors) {
         ConfigManager cfg = plugin.getConfigManager();
         String path = "effects.arrival.pillar";
         if (!cfg.getBoolean(path + ".enabled", true)) {
@@ -389,7 +422,7 @@ public class EffectManager {
                 double z = Math.sin(angle) * radius;
                 Location point = base.clone().add(x, y, z);
                 Color color = cyclingColor(colors, ring, Color.WHITE);
-                spawnDust(player, point, color, size);
+                spawnDust(viewers, point, color, size);
             }
         }
     }
@@ -414,7 +447,7 @@ public class EffectManager {
         }
     }
 
-    private void scheduleArrivalRingExpansion(Player player, List<String> colors) {
+    private void scheduleArrivalRingExpansion(Player player, List<Color> colors) {
         ConfigManager cfg = plugin.getConfigManager();
         String path = "effects.arrival.ring";
         if (!cfg.getBoolean(path + ".enabled", true)) {
@@ -434,15 +467,16 @@ public class EffectManager {
                 if (!player.isOnline()) {
                     return;
                 }
-                drawExpandingRing(player, colors, points, outerRadius, size);
+                Collection<Player> viewers = viewersNear(player.getLocation());
+                drawExpandingRing(viewers, player, colors, points, outerRadius, size);
                 if (innerRadius > 0.2) {
-                    drawExpandingRing(player, colors, points, innerRadius, size);
+                    drawExpandingRing(viewers, player, colors, points, innerRadius, size);
                 }
             }, step * stepDelayTicks);
         }
     }
 
-    private void drawExpandingRing(Player player, List<String> colors, int points, double radius, double size) {
+    private void drawExpandingRing(Collection<Player> viewers, Player player, List<Color> colors, int points, double radius, double size) {
         Location base = player.getLocation();
         for (int i = 0; i < points; i++) {
             double angle = Math.toRadians((360.0 / points) * i);
@@ -450,11 +484,11 @@ public class EffectManager {
             double z = Math.sin(angle) * radius;
             Location point = base.clone().add(x, 0.15, z);
             Color color = cyclingColor(colors, i, Color.WHITE);
-            spawnDust(player, point, color, size);
+            spawnDust(viewers, point, color, size);
         }
     }
 
-    private void playArrivalHelixColumn(Player player, List<String> colors) {
+    private void playArrivalHelixColumn(Collection<Player> viewers, Player player, List<Color> colors) {
         ConfigManager cfg = plugin.getConfigManager();
         String path = "effects.arrival.helix";
         if (!cfg.getBoolean(path + ".enabled", true)) {
@@ -478,12 +512,12 @@ public class EffectManager {
                 double y = t * height;
                 Location point = base.clone().add(x, y, z);
                 Color color = cyclingColor(colors, i, Color.WHITE);
-                spawnDust(player, point, color, size);
+                spawnDust(viewers, point, color, size);
             }
         }
     }
 
-    private void scheduleArrivalRain(Player player, List<String> colors) {
+    private void scheduleArrivalRain(Player player, List<Color> colors) {
         ConfigManager cfg = plugin.getConfigManager();
         String path = "effects.arrival.rain";
         if (!cfg.getBoolean(path + ".enabled", true)) {
@@ -504,6 +538,7 @@ public class EffectManager {
                     return;
                 }
                 Location base = player.getLocation();
+                Collection<Player> viewers = viewersNear(base);
                 for (int i = 0; i < perWave; i++) {
                     double angle = random.nextDouble() * Math.PI * 2;
                     double r = random.nextDouble() * radius;
@@ -511,10 +546,10 @@ public class EffectManager {
                     double z = Math.sin(angle) * r;
                     Location point = base.clone().add(x, startHeight, z);
                     if (i % 2 == 0) {
-                        safeSpawn(player.getWorld(), particle, point, 0, 0, -0.03, 0, 1);
+                        safeSpawn(viewers, particle, point, 0, 0, -0.03, 0, 1);
                     } else {
                         Color color = cyclingColor(colors, waveIndex + i, Color.WHITE);
-                        safeSpawn(player.getWorld(), Particle.DUST, point, 0, 0, -0.03, 0, 1,
+                        safeSpawn(viewers, Particle.DUST, point, 0, 0, -0.03, 0, 1,
                                 new Particle.DustOptions(color, 1.2f));
                     }
                 }
@@ -522,15 +557,19 @@ public class EffectManager {
         }
     }
 
-    private void spawnDust(Player player, Location point, Color color, double size) {
-        safeSpawn(player.getWorld(), Particle.DUST, point, 1, 0, 0, 0, 0, new Particle.DustOptions(color, (float) size));
+    private void spawnDust(Collection<Player> viewers, Location point, Color color, double size) {
+        safeSpawn(viewers, Particle.DUST, point, 1, 0, 0, 0, 0, new Particle.DustOptions(color, (float) size));
     }
 
-    private void safeSpawn(World world, Particle particle, Location point, int count, double offsetX, double offsetY, double offsetZ, double extra) {
-        safeSpawn(world, particle, point, count, offsetX, offsetY, offsetZ, extra, null);
+    private void safeSpawn(Collection<Player> viewers, Particle particle, Location point, int count, double offsetX, double offsetY, double offsetZ, double extra) {
+        safeSpawn(viewers, particle, point, count, offsetX, offsetY, offsetZ, extra, null);
     }
 
-    private void safeSpawn(World world, Particle particle, Location point, int count, double offsetX, double offsetY, double offsetZ, double extra, Object explicitData) {
+    private void safeSpawn(Collection<Player> viewers, Particle particle, Location point, int count, double offsetX, double offsetY,
+                           double offsetZ, double extra, Object explicitData) {
+        if (viewers.isEmpty()) {
+            return;
+        }
         try {
             Object data = explicitData;
             if (data == null) {
@@ -541,10 +580,12 @@ public class EffectManager {
                     data = new Particle.DustOptions(Color.WHITE, 1.0f);
                 }
             }
-            if (data != null) {
-                world.spawnParticle(particle, point, count, offsetX, offsetY, offsetZ, extra, data);
-            } else {
-                world.spawnParticle(particle, point, count, offsetX, offsetY, offsetZ, extra);
+            for (Player viewer : viewers) {
+                if (data != null) {
+                    viewer.spawnParticle(particle, point, count, offsetX, offsetY, offsetZ, extra, data);
+                } else {
+                    viewer.spawnParticle(particle, point, count, offsetX, offsetY, offsetZ, extra);
+                }
             }
         } catch (Exception ex) {
             if (warnedParticles.add(particle)) {
@@ -554,11 +595,11 @@ public class EffectManager {
         }
     }
 
-    private Color cyclingColor(List<String> hexColors, int index, Color fallback) {
-        if (hexColors == null || hexColors.isEmpty()) {
+    private Color cyclingColor(List<Color> colors, int index, Color fallback) {
+        if (colors == null || colors.isEmpty()) {
             return fallback;
         }
-        return parseColor(hexColors.get(((index % hexColors.size()) + hexColors.size()) % hexColors.size()), fallback);
+        return colors.get(((index % colors.size()) + colors.size()) % colors.size());
     }
 
     private Color parseColor(String hex, Color fallback) {

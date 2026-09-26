@@ -2,6 +2,7 @@ package dev.stonertp.plugin.command;
 
 import dev.stonertp.plugin.StoneRTP;
 import dev.stonertp.plugin.manager.MessageManager;
+import dev.stonertp.plugin.model.RTPWorldSettings;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -43,7 +44,11 @@ public class RTPCommand implements CommandExecutor, TabCompleter {
         }
 
         switch (args[0].toLowerCase()) {
-            case "cancel" -> plugin.getTeleportManager().cancel(player, "rtp.cancelled-generic");
+            case "cancel" -> {
+                if (!plugin.getTeleportManager().cancel(player, "rtp.cancelled-generic")) {
+                    mm.sendChat(player, "rtp.nothing-to-cancel", null);
+                }
+            }
             case "player" -> teleportOther(player, args);
             default -> plugin.getTeleportManager().startRTP(player, args[0]);
         }
@@ -57,17 +62,16 @@ public class RTPCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length < 2) {
-            mm.sendChat(sender, "general.unknown-subcommand", null);
+            mm.sendChat(sender, "rtp.player-usage", null);
             return;
         }
         Player target = Bukkit.getPlayerExact(args[1]);
         if (target == null) {
-            mm.sendChat(sender, "general.player-not-found", Map.of("player", args[1]));
+            mm.sendChat(sender, "general.player-not-found", Map.of("player", mm.escape(args[1])));
             return;
         }
         String world = args.length >= 3 ? args[2] : target.getWorld().getName();
-        mm.sendChat(sender, "rtp.other-triggered", Map.of("player", target.getName()));
-        plugin.getTeleportManager().startRTP(target, world);
+        plugin.getTeleportManager().startForcedRTP(target, world, sender);
     }
 
     private void openMenu(Player player) {
@@ -77,7 +81,7 @@ public class RTPCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (!plugin.getConfigManager().isGuiEnabled()) {
-            mm.sendChat(player, "general.unknown-subcommand", null);
+            mm.sendChat(player, "rtp.gui-disabled", null);
             return;
         }
         plugin.getGuiManager().open(player);
@@ -87,7 +91,7 @@ public class RTPCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
             String partial = args[0].toLowerCase();
-            Stream<String> worldNames = Bukkit.getWorlds().stream().map(World::getName);
+            Stream<String> worldNames = Bukkit.getWorlds().stream().map(World::getName).filter(this::isRtpWorld);
             Stream<String> keywords = sender.hasPermission("stonertp.admin")
                     ? Stream.of("cancel", "player")
                     : Stream.of("cancel");
@@ -103,5 +107,10 @@ public class RTPCommand implements CommandExecutor, TabCompleter {
                     .collect(Collectors.toList());
         }
         return Stream.<String>empty().collect(Collectors.toList());
+    }
+
+    private boolean isRtpWorld(String worldName) {
+        RTPWorldSettings settings = plugin.getConfigManager().getWorldSettings(worldName);
+        return settings.enabled() && settings.isConfigured();
     }
 }

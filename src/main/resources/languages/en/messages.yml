@@ -29,7 +29,8 @@ general:
   reload-success: "&a✔ Configuration and messages have been reloaded."
   world-not-found: "&c✖ The world &f'{world}' &cdoesn't exist."
   world-disabled: "&c✖ Random teleport is disabled in &f'{world}'&c."
-  unknown-subcommand: "&c✖ Unknown subcommand. Use &f/rtp menu&c, &f/rtp <world>&c or just &f/rtp&c."
+  unknown-subcommand: "&c✖ Unknown subcommand. Use &f/rtp <world>&c, &f/rtp cancel&c or just &f/rtp&c."
+  toggle-usage: "&c✖ Usage: &f/stonertp toggle <overworld|nether|end|world> [on|off]&c."
 
 # Feedback for the main /rtp command and its subcommands.
 rtp:
@@ -49,11 +50,18 @@ rtp:
   world-toggle-off: "&e✔ Random teleport in &f{world} &eis now &l&edisabled&r&e."
   world-not-configured: "&c✖ &f'{world}' &cis not a configured RTP world."
   blocked-time: "&c✖ Random teleport is disabled right now. It's available again at &f{until}&c."
+  teleport-failed: "&c✖ The teleport failed, please try again. Any cost was refunded."
+  nothing-to-cancel: "&c✖ You have no random teleport to cancel."
+  payment-failed: "&c✖ The payment of &f{cost} &cdidn't go through, so you weren't teleported."
+  other-busy: "&c✖ &f{player} &cis already being teleported."
+  player-usage: "&c✖ Usage: &f/rtp player <player> [world]&c."
+  gui-disabled: "&c✖ The world menu is disabled - use &f/rtp <world>&c."
 
 # Feedback for /back.
 back:
   no-location: "&c✖ You don't have a previous location to go back to."
   success: "&a✔ Teleported back to your previous location."
+  failed: "&c✖ You couldn't be teleported back, please try again."
 
 # The world-picker GUI, opened with /rtp (no arguments).
 gui:
@@ -120,6 +128,7 @@ zone:
   list-header: "&7RTP zones &8({count})&7:"
   list-entry: "  &8- &f{name} &7in &f{world} &8({min} → {max}, {seconds}s)"
   list-empty: "&7No RTP zones yet - start with &f/stonertp zone wand&7."
+  storage-broken: "&c✖ zones.yml has a syntax error - fix it and run &f/stonertp reload &cbefore changing zones."
   # Action bar texts shown while standing inside a zone.
   countdown: "<gradient:#FFC24A:#FF7A00>➜ Random teleport in {seconds}s...</gradient>"
   paused: "&c✖ Random teleport is paused until &f{until}"

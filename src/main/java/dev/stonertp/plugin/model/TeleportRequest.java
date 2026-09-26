@@ -9,15 +9,16 @@ public class TeleportRequest {
     private final String worldName;
     private final Location startLocation;
     private final double costCharged;
+    private final boolean forcedByAdmin;
     private BukkitTask task;
     private BukkitTask effectsTask;
-    private Object bossBarHandle;
     private CompletableFuture<Location> locationFuture;
 
-    public TeleportRequest(String worldName, Location startLocation, double costCharged) {
+    public TeleportRequest(String worldName, Location startLocation, double costCharged, boolean forcedByAdmin) {
         this.worldName = worldName;
         this.startLocation = startLocation;
         this.costCharged = costCharged;
+        this.forcedByAdmin = forcedByAdmin;
     }
 
     public CompletableFuture<Location> getLocationFuture() {
@@ -40,6 +41,10 @@ public class TeleportRequest {
         return costCharged;
     }
 
+    public boolean isForcedByAdmin() {
+        return forcedByAdmin;
+    }
+
     public BukkitTask getTask() {
         return task;
     }
@@ -48,23 +53,11 @@ public class TeleportRequest {
         this.task = task;
     }
 
-    public BukkitTask getEffectsTask() {
-        return effectsTask;
-    }
-
     public void setEffectsTask(BukkitTask effectsTask) {
         this.effectsTask = effectsTask;
     }
 
-    public Object getBossBarHandle() {
-        return bossBarHandle;
-    }
-
-    public void setBossBarHandle(Object bossBarHandle) {
-        this.bossBarHandle = bossBarHandle;
-    }
-
-    public void cancel() {
+    public void cancelTasks() {
         if (task != null) {
             task.cancel();
         }

@@ -3,6 +3,7 @@ package dev.stonertp.plugin.listener;
 import dev.stonertp.plugin.StoneRTP;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 
@@ -13,7 +14,8 @@ public class PlayerDamageListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler
+    // MONITOR + ignoreCancelled: damage that spawn protection/god mode already cancelled wasn't taken.
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onDamage(EntityDamageEvent event) {
         if (!(event.getEntity() instanceof Player player)) {
             return;

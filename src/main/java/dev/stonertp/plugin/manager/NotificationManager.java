@@ -9,12 +9,15 @@ import org.bukkit.entity.Player;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class NotificationManager {
     private final StoneRTP plugin;
     private final Map<UUID, BossBar> activeBossBars = new HashMap<>();
+    private final Set<UUID> titleViewers = new HashSet<>();
 
     public NotificationManager(StoneRTP plugin) {
         this.plugin = plugin;
@@ -43,6 +46,7 @@ public class NotificationManager {
         int fadeOut = plugin.getConfigManager().getInt("notification.title-timing.fade-out-ticks", 10);
         Title.Times times = Title.Times.times(Duration.ofMillis(fadeIn * 50L), Duration.ofMillis(stay * 50L), Duration.ofMillis(fadeOut * 50L));
         player.showTitle(Title.title(title, subtitle, times));
+        titleViewers.add(player.getUniqueId());
     }
 
     private void showBossBar(Player player, Component message, int secondsLeft, int totalSeconds) {
@@ -77,11 +81,14 @@ public class NotificationManager {
         }
     }
 
+    // Also called on quit: dropping the bar reference is what lets it be shown again after the player rejoins.
     public void clear(Player player) {
         BossBar bar = activeBossBars.remove(player.getUniqueId());
         if (bar != null) {
             player.hideBossBar(bar);
         }
-        player.clearTitle();
+        if (titleViewers.remove(player.getUniqueId())) {
+            player.clearTitle();
+        }
     }
 }

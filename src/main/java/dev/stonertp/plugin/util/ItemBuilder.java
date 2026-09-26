@@ -57,9 +57,9 @@ public class ItemBuilder {
         }
         if (meta instanceof SkullMeta skullMeta) {
             try {
-                PlayerProfile profile = (PlayerProfile) Bukkit.createProfile(UUID.randomUUID());
+                PlayerProfile profile = Bukkit.createProfile(UUID.randomUUID());
                 profile.setProperty(new ProfileProperty("textures", base64Texture));
-                skullMeta.setOwnerProfile(profile);
+                skullMeta.setPlayerProfile(profile);
             } catch (Exception ignored) {
             }
         }

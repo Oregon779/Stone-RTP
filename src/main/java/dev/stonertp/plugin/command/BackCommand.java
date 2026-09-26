@@ -29,16 +29,18 @@ public class BackCommand implements CommandExecutor {
             return true;
         }
 
+        // Location#getWorld throws (instead of returning null) once its world has been unloaded.
         Location location = plugin.getBackLocationManager().get(player);
-        if (location == null || location.getWorld() == null) {
+        if (location == null || !location.isWorldLoaded()) {
             mm.sendChat(player, "back.no-location", null);
             return true;
         }
 
-        player.teleportAsync(location).thenAccept(success -> {
-            if (success) {
-                mm.sendChat(player, "back.success", null);
+        player.teleportAsync(location).whenComplete((success, error) -> {
+            if (!player.isOnline()) {
+                return;
             }
+            mm.sendChat(player, error == null && Boolean.TRUE.equals(success) ? "back.success" : "back.failed", null);
         });
         return true;
     }

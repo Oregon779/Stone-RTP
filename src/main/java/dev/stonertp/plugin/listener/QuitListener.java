@@ -16,7 +16,7 @@ public class QuitListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-        plugin.getTeleportManager().cancelOnQuit(player.getUniqueId());
+        plugin.getTeleportManager().cancelOnQuit(player);
         plugin.getEffectManager().clearRotation(player);
         plugin.getGuiManager().untrack(player.getUniqueId());
         plugin.getZoneManager().forget(player.getUniqueId());

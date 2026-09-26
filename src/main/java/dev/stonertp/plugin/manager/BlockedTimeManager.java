@@ -2,8 +2,9 @@ package dev.stonertp.plugin.manager;
 
 import dev.stonertp.plugin.StoneRTP;
 import dev.stonertp.plugin.model.TimeWindow;
-import org.bukkit.entity.Player;
+import org.bukkit.permissions.Permissible;
 
+import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -17,6 +18,7 @@ public class BlockedTimeManager {
     private final StoneRTP plugin;
     private List<TimeWindow> windows = List.of();
     private ZoneId zoneId = ZoneId.systemDefault();
+    private Clock clock = Clock.systemUTC();
 
     public BlockedTimeManager(StoneRTP plugin) {
         this.plugin = plugin;
@@ -55,7 +57,11 @@ public class BlockedTimeManager {
     }
 
     public LocalTime now() {
-        return LocalTime.now(zoneId);
+        return LocalTime.now(clock.withZone(zoneId));
+    }
+
+    void setClock(Clock clock) {
+        this.clock = clock;
     }
 
     public String formatNow() {
@@ -66,8 +72,8 @@ public class BlockedTimeManager {
         return zoneId.getId();
     }
 
-    public boolean isBlocked(Player player) {
-        return activeWindow(now()) != null && !player.hasPermission("stonertp.bypass.blocktime");
+    public boolean isBlocked(Permissible initiator) {
+        return activeWindow(now()) != null && !initiator.hasPermission("stonertp.bypass.blocktime");
     }
 
     public boolean isActive(TimeWindow window) {

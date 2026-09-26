@@ -8,6 +8,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -15,10 +16,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 public class GUIManager {
@@ -26,7 +25,8 @@ public class GUIManager {
 
     private final StoneRTP plugin;
     private final NamespacedKey worldKey;
-    private final Set<UUID> openViewers = new HashSet<>();
+    // The exact menu inventory each viewer has open; a click matches only that instance, never a same-titled chest.
+    private final Map<UUID, Inventory> openMenus = new HashMap<>();
 
     public GUIManager(StoneRTP plugin) {
         this.plugin = plugin;
@@ -41,39 +41,46 @@ public class GUIManager {
         MessageManager mm = plugin.getMessageManager();
         ConfigManager cfg = plugin.getConfigManager();
 
-        String title = mm.getRaw("gui.title");
-        Inventory inventory = Bukkit.createInventory(null, cfg.getGuiSize(), mm.format(title, null));
+        Inventory inventory = Bukkit.createInventory(null, cfg.getGuiSize(), mm.format(mm.getRaw("gui.title"), null));
         populate(inventory, player);
 
         player.openInventory(inventory);
-        openViewers.add(player.getUniqueId());
+        openMenus.put(player.getUniqueId(), inventory);
 
         Sound openSound = cfg.getSound("gui.sound-open", Sound.BLOCK_ENDER_CHEST_OPEN);
         player.playSound(player.getLocation(), openSound, 1.0f, 1.0f);
     }
 
     public void untrack(UUID uuid) {
-        openViewers.remove(uuid);
+        openMenus.remove(uuid);
+    }
+
+    public boolean isOpenMenu(HumanEntity viewer, Inventory topInventory) {
+        Inventory menu = openMenus.get(viewer.getUniqueId());
+        return menu != null && menu.equals(topInventory);
     }
 
     public void refreshOpenMenus() {
-        String expectedTitle = plugin.getMessageManager().getRaw("gui.title");
-        Component expected = plugin.getMessageManager().format(expectedTitle, null);
-
-        for (UUID uuid : new HashSet<>(openViewers)) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player == null || !player.isOnline()) {
-                openViewers.remove(uuid);
+        for (Map.Entry<UUID, Inventory> entry : new ArrayList<>(openMenus.entrySet())) {
+            Player player = Bukkit.getPlayer(entry.getKey());
+            if (player == null || !isOpenMenu(player, player.getOpenInventory().getTopInventory())) {
+                openMenus.remove(entry.getKey());
                 continue;
             }
-            Inventory top = player.getOpenInventory().getTopInventory();
-            if (!player.getOpenInventory().title().equals(expected)) {
-                openViewers.remove(uuid);
-                continue;
-            }
-            populate(top, player);
+            populate(entry.getValue(), player);
             player.updateInventory();
         }
+    }
+
+    // After a plugin reload the new instance doesn't know the old menus, so their items would become takeable.
+    public void closeAll() {
+        for (Map.Entry<UUID, Inventory> entry : new ArrayList<>(openMenus.entrySet())) {
+            Player player = Bukkit.getPlayer(entry.getKey());
+            if (player != null && isOpenMenu(player, player.getOpenInventory().getTopInventory())) {
+                player.closeInventory();
+            }
+        }
+        openMenus.clear();
     }
 
     private void populate(Inventory inventory, Player viewer) {

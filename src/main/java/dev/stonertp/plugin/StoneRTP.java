@@ -23,14 +23,10 @@ import dev.stonertp.plugin.manager.TeleportManager;
 import dev.stonertp.plugin.manager.UpdateChecker;
 import dev.stonertp.plugin.manager.ZoneManager;
 import org.bukkit.Bukkit;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.TabCompleter;
-import org.bukkit.event.Listener;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public final class StoneRTP extends JavaPlugin {
+public class StoneRTP extends JavaPlugin {
     private ConfigManager configManager;
     private MessageManager messageManager;
     private EconomyManager economyManager;
@@ -90,8 +86,14 @@ public final class StoneRTP extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (teleportManager != null) {
+            teleportManager.shutdown();
+        }
+        if (guiManager != null) {
+            guiManager.closeAll();
+        }
         if (updateChecker != null) {
-            updateChecker.stop();
+            updateChecker.shutdown();
         }
         if (cooldownPruneTask != null) {
             cooldownPruneTask.cancel();
@@ -106,6 +108,8 @@ public final class StoneRTP extends JavaPlugin {
         configManager.reload();
         messageManager.load();
         economyManager.setup();
+        safeLocationFinder.reload();
+        effectManager.reload();
         blockedTimeManager.load();
         zoneManager.load();
         updateChecker.start();
@@ -113,26 +117,25 @@ public final class StoneRTP extends JavaPlugin {
 
     private void registerCommands() {
         RTPCommand rtpCommand = new RTPCommand(this);
-        getCommand("rtp").setExecutor((CommandExecutor) rtpCommand);
-        getCommand("rtp").setTabCompleter((TabCompleter) rtpCommand);
+        getCommand("rtp").setExecutor(rtpCommand);
+        getCommand("rtp").setTabCompleter(rtpCommand);
 
         StoneRTPCommand stoneRTPCommand = new StoneRTPCommand(this);
-        getCommand("stonertp").setExecutor((CommandExecutor) stoneRTPCommand);
-        getCommand("stonertp").setTabCompleter((TabCompleter) stoneRTPCommand);
+        getCommand("stonertp").setExecutor(stoneRTPCommand);
+        getCommand("stonertp").setTabCompleter(stoneRTPCommand);
 
-        BackCommand backCommand = new BackCommand(this);
-        getCommand("back").setExecutor((CommandExecutor) backCommand);
+        getCommand("back").setExecutor(new BackCommand(this));
     }
 
     private void registerListeners() {
         PluginManager pm = getServer().getPluginManager();
-        pm.registerEvents((Listener) new PlayerMoveListener(this), (Plugin) this);
-        pm.registerEvents((Listener) new PlayerDamageListener(this), (Plugin) this);
-        pm.registerEvents((Listener) new GUIListener(this), (Plugin) this);
-        pm.registerEvents((Listener) new JoinListener(this), (Plugin) this);
-        pm.registerEvents((Listener) new QuitListener(this), (Plugin) this);
+        pm.registerEvents(new PlayerMoveListener(this), this);
+        pm.registerEvents(new PlayerDamageListener(this), this);
+        pm.registerEvents(new GUIListener(this), this);
+        pm.registerEvents(new JoinListener(this), this);
+        pm.registerEvents(new QuitListener(this), this);
         pm.registerEvents(new ZoneWandListener(this), this);
-        pm.registerEvents((Listener) updateChecker, (Plugin) this);
+        pm.registerEvents(updateChecker, this);
     }
 
     public ConfigManager getConfigManager() {

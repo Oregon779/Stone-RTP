@@ -1,11 +1,14 @@
 package dev.stonertp.plugin.listener;
 
 import dev.stonertp.plugin.StoneRTP;
+import dev.stonertp.plugin.manager.TeleportManager;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 
 public class PlayerMoveListener implements Listener {
     private final StoneRTP plugin;
@@ -14,23 +17,34 @@ public class PlayerMoveListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler
+    // Fires for every player many times per second; head rotation alone is filtered out before any lookup.
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent event) {
-        Player player = event.getPlayer();
-        if (!plugin.getTeleportManager().hasActiveWarmup(player.getUniqueId())) {
+        if (!event.hasChangedPosition()) {
             return;
         }
-        if (!plugin.getConfigManager().isCancelOnMove()) {
+        checkMovedAway(event.getPlayer(), event.getTo());
+    }
+
+    // PlayerTeleportEvent has its own handler list, so /home, /spawn or portals never reached onMove.
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onTeleport(PlayerTeleportEvent event) {
+        checkMovedAway(event.getPlayer(), event.getTo());
+    }
+
+    private void checkMovedAway(Player player, Location to) {
+        TeleportManager teleports = plugin.getTeleportManager();
+        if (!teleports.hasActiveWarmup(player.getUniqueId()) || !plugin.getConfigManager().isCancelOnMove()) {
             return;
         }
-        Location start = plugin.getTeleportManager().getStartLocation(player.getUniqueId());
-        Location to = event.getTo();
-        if (start == null || to == null || !start.getWorld().equals(to.getWorld())) {
+        Location start = teleports.getStartLocation(player.getUniqueId());
+        if (start == null || to == null) {
             return;
         }
+        boolean otherWorld = !start.getWorld().equals(to.getWorld());
         double threshold = plugin.getConfigManager().getMoveCancelThreshold();
-        if (start.distanceSquared(to) >= threshold * threshold) {
-            plugin.getTeleportManager().cancel(player, "rtp.cancelled-move");
+        if (otherWorld || start.distanceSquared(to) >= threshold * threshold) {
+            teleports.cancel(player, "rtp.cancelled-move");
         }
     }
 }
