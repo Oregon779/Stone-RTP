@@ -10,21 +10,19 @@
 #
 # General command feedback (help, reload, errors, GUI item text, ...)
 # is translated per-language instead, in:
-#   plugins/Stone RTP/languages/<language>/messages.yml
+#   plugins/StoneRTP/languages/<language>/messages.yml
 #
 # ---------------------------------------------------------------------
-# Placeholders usable in the notification messages below:
-#   {player}     - the player's name
-#   {world}      - the world name the player is being teleported to
-#   {x} {y} {z}  - the destination block coordinates
-#   {seconds}    - remaining warmup seconds (countdown messages only)
-#   {time}       - remaining cooldown, formatted as e.g. "1m 24s"
-#   {cost}       - the Vault cost for this random teleport
-#   {attempts}   - safe-location attempts used
+# Placeholder usable in the countdown texts under "notification" below:
+#   {seconds}    - remaining warmup seconds
+# The other messages (success, cooldown, costs, ...) and their
+# placeholders ({world}, {x} {y} {z}, {time}, {cost}, ...) live in
+# messages.yml.
 # ---------------------------------------------------------------------
 #
 # Missing options are added automatically on plugin updates. Existing
 # values you changed are never overwritten, even in nested sections.
+# Entries you delete under "worlds" and "cooldown.groups" stay deleted.
 # =====================================================================
 
 # Language used for all command/status feedback. Must match a folder
@@ -293,9 +291,11 @@ effects:
 # found, even on very large radii. Uses the server's own surface
 # heightmap (ignoring leaves) to jump straight to the real outdoor
 # ground level, so players never land on top of a tree canopy or
-# inside a cave. The search starts the moment the warmup countdown
-# begins, so by the time it reaches zero the location is already
-# found and the player teleports instantly.
+# inside a cave. Worlds with a roof (the Nether, modded nethers) are
+# the exception: there the floor of a cavern below the roof is used -
+# see "search-mode" under "worlds". The search starts the moment the
+# warmup countdown begins, so by the time it reaches zero the location
+# is already found and the player teleports instantly.
 safe-location:
   max-attempts: 30
   min-y: -58
